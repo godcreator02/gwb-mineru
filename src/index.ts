@@ -2,7 +2,11 @@ import { mkdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { Service } from 'cordis'
 import { isRecord, requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用这个名字
+// 只为激活 commands / data / skills / settings 四个件给 cordis Context 加的服务名。
+// type-only，运行期不欠它们；static inject 那三个名字靠这些声明才有类型
+import type {} from '@godcreator02/gwb-commands'
+import type {} from '@godcreator02/gwb-data'
+import type {} from '@godcreator02/gwb-settings'
 import type {} from '@godcreator02/gwb-skills'
 import { downloadExtract } from './core/extract.js'
 import { isDone, poll, requestUpload, upload, type FileResult } from './core/mineru.js'
