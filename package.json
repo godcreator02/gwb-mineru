@@ -1,0 +1,35 @@
+{
+  "name": "@godcreator02/gwb-pdf2md",
+  "version": "0.0.1",
+  "description": "PDF 转 markdown：一个 gwb 件。MinerU 云端转换，作业模式——submit 秒回、后台跑完落盘",
+  "type": "module",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "src", "skills"],
+  "gwb": { "title": "PDF 转 markdown" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "pnpm build"
+  },
+  "engines": { "node": ">=24" },
+  "peerDependencies": {
+    "@godcreator02/gwb-plugin-api": ">=0.0.4"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.18"
+  },
+  "devDependencies": {
+    "@godcreator02/gwb-commands": "0.0.2",
+    "@godcreator02/gwb-data": "0.0.3",
+    "@godcreator02/gwb-plugin-api": "0.0.4",
+    "@godcreator02/gwb-settings": "0.0.6",
+    "@godcreator02/gwb-skills": "0.0.3",
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^24.0.0",
+    "cordis": "4.0.0-rc.9",
+    "typescript": "^7.0.2"
+  }
+}
