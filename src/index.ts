@@ -21,9 +21,9 @@ import { isDone, poll, requestUpload, upload, type FileResult } from './core/min
  *
  * 三个邻居服务走 `static inject` 硬依赖（gwb-node-cli 的同款姿势）：settings（token）、
  * data（作业账）、commands（命令那面）。缺谁这个件不挂——比挂上之后半身不遂好查。
- * **用的时候一律 `this.own.<服务>` 现取**：消费者拿到的服务扩展是在别处定型的，
- * 类字段里存的引用跨不过去（实机撞过：总线那扇门读得到 token、消费方那扇门读不到，
- * 症状是「同一进程两条路一个成一个败」）。
+ * 用的时候一律 `this.own.<服务>` 现取。**设置项必须在 init 里 define**：不声明的话
+ * get 永远回 undefined——实机撞过一轮，症状是「token 明明在 settings.json 里，
+ * 命令却报没配」。
  */
 
 const PLUGIN_NAME = 'gwb-pdf2md'
@@ -64,6 +64,14 @@ export interface GwbPdf2mdApi {
   list(): Pdf2mdJob[]
 }
 
+/** 设置：一枚凭据，住 pdf2md 节。声明在 init 里——不声明的话 get 永远回 undefined（实机撞过） */
+const TOKEN_DEF = {
+  key: 'mineru-token',
+  title: 'MinerU Token',
+  type: 'secret',
+  description: 'MinerU 云端转换的 API token，https://mineru.net 申请',
+} as const
+
 function nowIso(): string {
   return new Date().toISOString()
 }
@@ -98,6 +106,9 @@ export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
       for (const controller of this.controllers.values()) controller.abort()
       void this.settleInterrupted().catch(() => undefined)
     })
+
+    // 声明那一格设置。define 回注销函数，effect 包着走自动摘
+    this.own.effect(() => this.own.gwbSettings.define(TOKEN_DEF))
 
     const cli = this.own.gwbCommands
     if (cli === undefined) return
