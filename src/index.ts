@@ -12,8 +12,12 @@ import { downloadExtract } from './core/extract.js'
 import { isDone, poll, requestUpload, upload, type FileResult } from './core/mineru.js'
 
 /**
- * PDF 转 markdown：MinerU 云端转换的作业机。**submit 秒回、后台跑完落盘**——
+ * pdf2md 服务：MinerU 云端转换的作业机。**submit 秒回、后台跑完落盘**——
  * 内核那条 fd3 命令通道 120 秒硬超时，分钟级的云端解析绝不能在线等。
+ *
+ * **件叫 gwb-mineru、服务叫 gwbPdf2md——名字不对应是有意的**（对着本仓惯例
+ * 「服务名跟件名走」的唯一例外）：件名说**谁在干活**（MinerU 引擎），服务名与
+ * 命令前缀说**干的是什么**（pdf2md）。消费方 inject 的永远是 `gwbPdf2md`。
  *
  * 零库概念：输入一个 PDF 绝对路径、一个输出目录，产出完整 markdown + images/ 原样落
  * outDir（markdown 文件名、语言判定、文件清单记在作业上）。「归档副本、成品位命名」那套
@@ -26,7 +30,7 @@ import { isDone, poll, requestUpload, upload, type FileResult } from './core/min
  * 命令却报没配」。
  */
 
-const PLUGIN_NAME = 'gwb-pdf2md'
+const PLUGIN_NAME = 'gwb-mineru'
 const JOBS_DOC = 'jobs'
 
 /** 轮询节奏与上限（秒），沿用老仓默认 */
@@ -64,9 +68,9 @@ export interface GwbPdf2mdApi {
   list(): Pdf2mdJob[]
 }
 
-/** 设置：一枚凭据，住 pdf2md 节。声明在 init 里——不声明的话 get 永远回 undefined（实机撞过） */
+/** 设置：一枚凭据。节名跟 cordis.yml 条目 id 走（mineru），声明在 init 里——不声明的话 get 永远回 undefined（实机撞过） */
 const TOKEN_DEF = {
-  key: 'mineru-token',
+  key: 'token',
   title: 'MinerU Token',
   type: 'secret',
   description: 'MinerU 云端转换的 API token，https://mineru.net 申请',
@@ -76,7 +80,7 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
-export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
+export default class GwbMineru extends Service implements GwbPdf2mdApi {
   /** settings / data / commands 三个硬依赖缺谁不挂 */
   static inject = ['gwbCommands', 'gwbSettings', 'gwbData']
 
@@ -149,7 +153,7 @@ export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
 
     // 启动对账：上一次运行留下的非终态作业，如今没人再轮询了
     void this.load().catch(() => undefined)
-    this.info('pdf2md 作业机就绪（ctx.gwbPdf2md）')
+    this.info('mineru 作业机就绪（ctx.gwbPdf2md，件 gwb-mineru）')
   }
 
   async submit(input: string, outDir: string): Promise<Pdf2mdJob> {
@@ -159,7 +163,7 @@ export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
     if (fileStat === undefined || !fileStat.isFile()) throw new Error(`input 不是个能读的文件：${input}`)
     await mkdir(outDir, { recursive: true })
     const token = this.token()
-    if (token === undefined) throw new Error('mineru-token 没配——先在设置里填，或 settings_set { section: "pdf2md", key: "mineru-token" }')
+    if (token === undefined) throw new Error('MinerU token 没配——先在设置里填，或 settings_set { section: "mineru", key: "token" }')
 
     const id = `${nowIso().replaceAll(/[-:TZ.]/g, '').slice(0, 14)}-${String(++this.jobSeq)}`
     const at = nowIso()
@@ -185,7 +189,7 @@ export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
 
   /** token 现取现读：settings 改值不重挂件就生效 */
   private token(): string | undefined {
-    const value = this.own.gwbSettings?.get('mineru-token')
+    const value = this.own.gwbSettings?.get('token')
     return typeof value === 'string' && value.trim() !== '' ? value : undefined
   }
 
