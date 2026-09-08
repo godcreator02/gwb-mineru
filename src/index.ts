@@ -13,7 +13,8 @@ import { isDone, poll, requestUpload, upload, type FileResult } from './core/min
 
 /**
  * pdf2md 服务：MinerU 云端转换的作业机。**submit 秒回、后台跑完落盘**——
- * 内核那条 fd3 命令通道 120 秒硬超时，分钟级的云端解析绝不能在线等。
+ * 命令是页面等着的一次调用，分钟级的云端解析绝不能在线等；作业号先回，终态经
+ * `gwbKernel.emit` 推一条事件。
  *
  * **件叫 gwb-mineru、服务叫 gwbPdf2md——名字不对应是有意的**（对着本仓惯例
  * 「服务名跟件名走」的唯一例外）：件名说**谁在干活**（MinerU 引擎），服务名与
