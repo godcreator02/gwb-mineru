@@ -2,14 +2,8 @@ import { mkdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { Service } from 'cordis'
 import { isRecord, requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活三个件的 `declare module 'cordis'`——下面局部注入要用这几个名字。
-// 全部 type-only：哪个件不在，本件照挂，只是那一面缺着
-import type {} from '@godcreator02/gwb-commands'
+// 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用这个名字
 import type {} from '@godcreator02/gwb-skills'
-import type { GwbCommands } from '@godcreator02/gwb-commands'
-import type { GwbDataApi } from '@godcreator02/gwb-data'
-import type { GwbSettingsApi } from '@godcreator02/gwb-settings'
-import type { SettingDef } from '@godcreator02/gwb-settings'
 import { downloadExtract } from './core/extract.js'
 import { isDone, poll, requestUpload, upload, type FileResult } from './core/mineru.js'
 
@@ -20,6 +14,12 @@ import { isDone, poll, requestUpload, upload, type FileResult } from './core/min
  * 零库概念：输入一个 PDF 绝对路径、一个输出目录，产出完整 markdown + images/ 原样落
  * outDir（markdown 文件名、语言判定、文件清单记在作业上）。「归档副本、成品位命名」那套
  * 篇目录布局是调用方（如 papers）的私有约定，不在这儿。
+ *
+ * 三个邻居服务走 `static inject` 硬依赖（gwb-node-cli 的同款姿势）：settings（token）、
+ * data（作业账）、commands（命令那面）。缺谁这个件不挂——比挂上之后半身不遂好查。
+ * **用的时候一律 `this.own.<服务>` 现取**：消费者拿到的服务扩展是在别处定型的，
+ * 类字段里存的引用跨不过去（实机撞过：总线那扇门读得到 token、消费方那扇门读不到，
+ * 症状是「同一进程两条路一个成一个败」）。
  */
 
 const PLUGIN_NAME = 'gwb-pdf2md'
@@ -60,19 +60,14 @@ export interface GwbPdf2mdApi {
   list(): Pdf2mdJob[]
 }
 
-/** 设置：一枚凭据，住 pdf2md 节 */
-const TOKEN_DEF: SettingDef = {
-  key: 'mineru-token',
-  title: 'MinerU Token',
-  type: 'secret',
-  description: 'MinerU 云端转换的 API token，https://mineru.net 申请',
-}
-
 function nowIso(): string {
   return new Date().toISOString()
 }
 
 export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
+  /** settings / data / commands 三个硬依赖缺谁不挂 */
+  static inject = ['gwbCommands', 'gwbSettings', 'gwbData']
+
   /**
    * 提供方自己的 ctx。方法里的 `this.ctx` 是**消费者**的——作业的命脉（定时器、
    * 落账、收尾）全挂在提供方身上，消费者卸载不该带走一个还在跑的转换
@@ -80,14 +75,10 @@ export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
   private readonly own: GwbContext
   private readonly info: (message: string) => void
   private readonly warn: (message: string) => void
-  /** 作业账：id → 记录。落盘经 gwbData（不在就只在内存，warn 一次） */
+  /** 作业账：id → 记录。落盘经 gwbData */
   private readonly table = new Map<string, Pdf2mdJob>()
   private readonly controllers = new Map<string, AbortController>()
   private jobSeq = 0
-  private settingsApi: GwbSettingsApi | undefined
-  private dataApi: GwbDataApi | undefined
-  private dataWarned = false
-  private loaded = false
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbPdf2md')
@@ -104,63 +95,45 @@ export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
       void this.settleInterrupted().catch(() => undefined)
     })
 
-    this.own.inject(['gwbSettings'], (scoped) => {
-      this.settingsApi = scoped.gwbSettings
-      scoped.effect(() => scoped.gwbSettings.define(TOKEN_DEF))
-      scoped.effect(() => () => {
-        this.settingsApi = undefined
-      })
-    })
-
-    this.own.inject(['gwbData'], (scoped) => {
-      this.dataApi = scoped.gwbData
-      // 启动对账：上一次运行留下的非终态作业，如今没人再轮询了
-      void this.load()
-      scoped.effect(() => () => {
-        this.dataApi = undefined
-      })
-    })
-
-    // 命令那面是可选的：没有总线时服务面照样完整（消费方直接进程内调）
-    this.own.inject(['gwbCommands'], (scoped) => {
-      const cli = scoped.gwbCommands
-      if (cli === undefined) return
-      const api = this as unknown as GwbPdf2mdApi
-      scoped.effect(() =>
-        cli.register(
-          { name: 'pdf2md.submit', description: '提交 PDF 转 markdown 作业：{ input, outDir }。秒回作业号，成败看 pdf2md.status', plugin: PLUGIN_NAME },
-          async (args) => {
-            const raw = isRecord(args) ? args : {}
-            const input = raw['input']
-            const outDir = raw['outDir']
-            if (typeof input !== 'string' || input === '') throw new Error('pdf2md.submit 要 { input: 绝对路径 }')
-            if (typeof outDir !== 'string' || outDir === '') throw new Error('pdf2md.submit 要 { outDir: 绝对路径 }')
-            return api.submit(input, outDir)
-          },
-        ),
-      )
-      scoped.effect(() =>
-        cli.register({ name: 'pdf2md.jobs', description: '全部转换作业（新的在前）', plugin: PLUGIN_NAME }, () => ({
-          count: this.table.size,
-          jobs: this.list(),
-        })),
-      )
-      scoped.effect(() =>
-        cli.register({ name: 'pdf2md.status', description: '查一条转换作业：{ id }', plugin: PLUGIN_NAME }, (args) => {
+    const cli = this.own.gwbCommands
+    if (cli === undefined) return
+    this.own.effect(() =>
+      cli.register(
+        { name: 'pdf2md.submit', description: '提交 PDF 转 markdown 作业：{ input, outDir }。秒回作业号，成败看 pdf2md.status', plugin: PLUGIN_NAME },
+        async (args) => {
           const raw = isRecord(args) ? args : {}
-          const id = raw['id']
-          if (typeof id !== 'string' || id === '') throw new Error('pdf2md.status 要 { id: string }')
-          const job = this.get(id)
-          if (job === undefined) throw new Error(`没有这个作业：${id}`)
-          return job
-        }),
-      )
-    })
+          const input = raw['input']
+          const outDir = raw['outDir']
+          if (typeof input !== 'string' || input === '') throw new Error('pdf2md.submit 要 { input: 绝对路径 }')
+          if (typeof outDir !== 'string' || outDir === '') throw new Error('pdf2md.submit 要 { outDir: 绝对路径 }')
+          return this.submit(input, outDir)
+        },
+      ),
+    )
+    this.own.effect(() =>
+      cli.register({ name: 'pdf2md.jobs', description: '全部转换作业（新的在前）', plugin: PLUGIN_NAME }, () => ({
+        count: this.table.size,
+        jobs: this.list(),
+      })),
+    )
+    this.own.effect(() =>
+      cli.register({ name: 'pdf2md.status', description: '查一条转换作业：{ id }', plugin: PLUGIN_NAME }, (args) => {
+        const raw = isRecord(args) ? args : {}
+        const id = raw['id']
+        if (typeof id !== 'string' || id === '') throw new Error('pdf2md.status 要 { id: string }')
+        const job = this.get(id)
+        if (job === undefined) throw new Error(`没有这个作业：${id}`)
+        return job
+      }),
+    )
 
+    // 说明书那一格，局部注入：没装 skills 件的 home 里作业机照常挂
     this.own.inject(['gwbSkills'], (scoped) => {
       scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
     })
 
+    // 启动对账：上一次运行留下的非终态作业，如今没人再轮询了
+    void this.load().catch(() => undefined)
     this.info('pdf2md 作业机就绪（ctx.gwbPdf2md）')
   }
 
@@ -195,8 +168,9 @@ export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
     return [...this.table.values()].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   }
 
+  /** token 现取现读：settings 改值不重挂件就生效 */
   private token(): string | undefined {
-    const value = this.settingsApi?.get('mineru-token')
+    const value = this.own.gwbSettings?.get('mineru-token')
     return typeof value === 'string' && value.trim() !== '' ? value : undefined
   }
 
@@ -250,17 +224,10 @@ export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
     }
   }
 
-  /** 作业账落盘。gwbData 不在就只在内存里记着，warn 一次（不挡活） */
+  /** 作业账落盘 */
   private async persist(): Promise<void> {
-    if (this.dataApi === undefined) {
-      if (!this.dataWarned) {
-        this.dataWarned = true
-        this.warn('gwb-data 件不在——作业账只在内存里，重启就丢')
-      }
-      return
-    }
     try {
-      await this.dataApi.writeDoc(JOBS_DOC, { jobs: this.list() })
+      await this.own.gwbData?.writeDoc(JOBS_DOC, { jobs: this.list() })
     } catch (err: unknown) {
       this.warn(`作业账落盘失败（继续在内存里跑）：${String(err)}`)
     }
@@ -268,9 +235,7 @@ export default class GwbPdf2md extends Service implements GwbPdf2mdApi {
 
   /** 启动对账：把上次留下的非终态作业标 interrupted */
   private async load(): Promise<void> {
-    if (this.loaded) return
-    this.loaded = true
-    const doc = await this.dataApi?.readDoc(JOBS_DOC).catch(() => undefined)
+    const doc = await this.own.gwbData?.readDoc(JOBS_DOC).catch(() => undefined)
     if (!isRecord(doc) || !Array.isArray(doc['jobs'])) return
     let changed = false
     for (const raw of doc['jobs']) {
