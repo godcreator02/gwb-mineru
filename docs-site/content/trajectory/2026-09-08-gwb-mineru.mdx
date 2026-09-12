@@ -1,0 +1,40 @@
+---
+title: gwb-mineru 这条线
+born-at: 2026-09-08T15:44
+type: root
+label: 作业机
+domain: 这条线
+---
+
+## 项目定义与边界
+
+gwb 内核线的 MinerU 转换件：提供 `pdf2md` 服务——PDF 经 MinerU 云端转 markdown，**作业机
+形态**。立项时定下的三条边界，至今没动：
+
+1. **submit 秒回、后台跑全链**——MinerU 解析分钟级，命令是页面等着的一次调用，绝不能在线
+   等；作业号先回，终态经事件推、经 status 查
+2. **零库概念**——输入一个 PDF 绝对路径、一个输出目录，产出完整 markdown + images/ 原样
+   落 outDir。不知道 papers 存在；归档、成品命名、规格化全是调用方（papers，单元
+   `26090814ifd`）的私约
+3. **件名与服务名不对应是有意例外**——件名说引擎（gwb-mineru），服务与命令说功能
+   （pdf2md）。了断见[那张卡](/trajectory/2026-09-08-engine-vs-function-naming)
+
+MinerU 客户端与 zip 解包的接口规格沿用老仓 god-papers（单元 `26082116etw`，只作参考）；
+语言判定（CJK 占比）是通用文本分析，跟着这个件走。
+
+## 里程碑
+
+（只追加。日期｜标题｜一句话说明）
+
+- 2026-09-08 15:44｜开仓｜pdf2md 作业机：submit 秒回 / 后台跑 MinerU 全链 / 作业账 gwbData
+  落盘重启标 interrupted / 落定经内核 emit 推界面（commit `3b3f33c`）
+- 2026-09-08 16:03–16:12｜三连修｜0.0.2 重写删掉了三样删了不报错的东西：邻居服务硬依赖
+  （改成类字段可选）、activation import、settings define；实机修理后定下 static inject +
+  `this.own` 现取的姿势，并翻案一处误诊（commits `6256601` / `9c9e657` / `cf69744`，见
+  [那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）
+- 2026-09-08 16:29｜更名｜`gwb-pdf2md` 改 `gwb-mineru`（引擎命名），服务与命令的脸保持
+  `pdf2md`（功能命名）；曾用包名 0.0.1–0.0.3 废弃（commit `3110bfe`，见
+  [那张卡](/trajectory/2026-09-08-engine-vs-function-naming)）
+- 2026-09-09 02:03｜迁 0.1｜依赖换到单进程内核那批（commit `64b1b91`）。这个件没有浏览器半、
+  没有窗格，契约变的那几处（gwb:// / kernel.info / appVersion / window.gwb.logs）一处都没
+  用到——代码只动了 fd3 那句注释，「作业号先回」的判据本身不变

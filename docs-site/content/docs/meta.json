@@ -1,0 +1,10 @@
+{
+  "pages": [
+    "system-map",
+    "usage",
+    "job-runner",
+    "mineru-client",
+    "extract",
+    "glossary"
+  ]
+}

@@ -1,0 +1,90 @@
+---
+title: 作业机：gwbPdf2md 服务
+description: src/index.ts——submit 秒回、后台全链、作业账落盘、重启对账；命令与事件的脸也在这层
+---
+
+# 作业机：gwbPdf2md 服务
+
+**本页回答**：`src/index.ts` 管什么、不管什么；作业的状态怎么推进、账怎么落；三个邻居服务
+为什么是硬依赖。
+
+## 管什么
+
+作业的一生：验参落账秒回、后台跑全链（申请上传位 → 上传 → 轮询 → 解包）、每步推进落账、
+终态推 UI 事件、启动对账、卸载打断。命令面 `pdf2md.*` 三条与说明书注册也在这层。
+
+## 不知道什么
+
+- 不知道 MinerU API 长什么样——三个动作在 [云端客户端](/docs/mineru-client)
+- 不知道 zip 里有什么、markdown 怎么认——在 [解包与语言](/docs/extract)
+- 不知道调用方拿产出干什么——零库概念，「归档副本、成品位命名」那套篇目录布局是 papers 的
+  私有约定，不在这儿
+- 不知道 token 的值——settings 给，现取现读
+
+## 数据结构
+
+一条作业的账，落盘就是它——只装可序列化的东西：
+
+{/* ref file="../src/index.ts" lines="41-57" */}
+
+`state` 六态：`queued → uploading → running → done | failed | interrupted`，后三态是终态。
+`queued` 是瞬态——submit 落完账立刻开跑。
+
+## 提供的接口
+
+- 服务 `ctx.gwbPdf2md`：`submit` / `get` / `list`（契约见[用法](/docs/usage)）
+- 命令 `pdf2md.submit` / `pdf2md.status` / `pdf2md.jobs`
+- 事件 `job-settled`（终态时，经内核 emit 通道）
+- 说明书目录 `skills/`（经 gwb-skills 局部注入）
+
+## 依赖的接口
+
+| 接口 | 用来做什么 | 生产实现 | 测试实现 |
+| --- | --- | --- | --- |
+| `gwbSettings` | define token 那格、现取 | gwb-settings 件 | 无——仓里没有单测设施 |
+| `gwbData` | 作业账 `writeDoc` / `readDoc`（文档名 `jobs`） | gwb-data 件 | 同上 |
+| `gwbCommands` | 登记三条命令 | gwb-commands 件 | 同上 |
+| `gwbSkills` | 注册说明书目录（局部、可选） | gwb-skills 件 | 同上 |
+| `gwbKernel.emit` | 终态推 `job-settled` | gwb-kernel | 同上 |
+
+三个邻居服务走 `static inject` 硬依赖，缺谁这个件不挂——比挂上之后半身不遂好查。类字段存
+引用跨不到消费者扩展，所以用的时候一律 `this.own.<服务>` 现取（那晚的修理与翻案见
+[那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）：
+
+{/* ref file="../src/index.ts" lines="84-92" */}
+
+skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
+
+{/* ref file="../src/index.ts" lines="150-153" */}
+
+## 怎么单独测
+
+仓里没有单测设施，现状两条：`pnpm typecheck` 守类型；真链路进隔离 home 实跑（要真 token、
+真云端）。能单测的两块被刻意切在服务外面——云端客户端与解包都是纯函数模块，不欠 cordis，
+这正是依赖方向单向的回报。
+
+## 代码地图
+
+- **在哪**：`src/index.ts`，一个文件
+- **先读**：文件头注释（14–32 行，自我介绍）→ `submit`（160 行）→ `run`（197 行）
+- **读序**：`[Service.init]`（登记命令与设置、启动对账）→ `submit`（验参落账秒回）→
+  `run`（后台全链）→ `finish`（状态推进 + 终态 emit）→ `persist` / `load`（账的写与对账）
+- **可跳过**：`dist/`（tsc 产物）
+
+## 设计点（错了难改的那几条）
+
+**submit 秒回是判据不是偏好**：命令是页面等着的一次调用，分钟级的云端解析绝不能在线等——
+作业号先回，成败看 status：
+
+{/* ref file="../src/index.ts" lines="15-21" */}
+
+**作业的命脉挂提供方，不挂消费者**：方法里的 `this.ctx` 是消费者的——定时器、落账、收尾
+全挂 `this.own`，消费者卸载不该带走一个还在跑的转换（上面 84–92 那段钉过）。
+
+**启动对账与卸载打断，只标不重跑**：重启后上次留下的非终态作业标 `interrupted`（理由写进
+error），件卸载时 abort 还在跑的控制器再标一遍——不丢账、不假装还在跑，也**不**自动重提：
+
+{/* ref file="../src/index.ts" lines="256-278" */}
+
+**设置项必须在 init 里 define**：不声明的话 get 永远回 undefined——实机撞过一轮，症状是
+「token 明明在 settings.json 里，命令却报没配」（见[那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）。

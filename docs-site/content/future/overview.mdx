@@ -1,0 +1,46 @@
+---
+title: 总览：这个件是什么
+description: gwb 线的 MinerU 转换件——把「PDF 变 markdown」做成作业，谁要谁注入
+---
+
+# gwb-mineru 是什么
+
+gwb 内核线（单元 `26090705ymz`）的 **MinerU 转换件**：提供 `pdf2md` 服务——PDF 经 MinerU
+云端转 markdown。零库概念：输入一个 PDF 绝对路径、一个输出目录，产出完整 markdown +
+`images/` 原样落 outDir。
+
+## 为什么是作业，不是命令
+
+MinerU 云端解析是**分钟级**的，而 gwb 的命令是页面等着的一次调用（单进程线上没有超时红线
+了，但「页面等着」的性质没变）。所以这个件是作业机：`submit` 秒回作业号，后台跑全链，终态
+经事件推、经 status 查。这个取舍写进了代码的头注释，也定下了整个件的形状。
+
+## 名不对应：件名说引擎，服务名说功能
+
+件叫 `gwb-mineru`（谁在干活：MinerU 引擎），服务与命令叫 `pdf2md`（干什么：转换）。对着
+gwb 线「服务名跟件名走」的惯例，这是唯一一个有意例外——消费方 inject 的永远是 `gwbPdf2md`。
+了断见[那张卡](/trajectory/2026-09-08-engine-vs-function-naming)。曾用包名
+`@godcreator02/gwb-pdf2md` 0.0.1–0.0.3 已废弃。
+
+## 零库：papers 在调用侧
+
+papers（单元 `26090814ifd`）在**它自己的代码里**注入 `gwbPdf2md` 做论文转换——归档副本、
+成品位命名那套篇目录布局是 papers 的私有约定，不进这个件。agent 不直接碰 papers；本件
+`pdf2md.submit` 命令是「一个孤立 PDF 想要 markdown」的那扇门。
+
+MinerU 客户端与 zip 解包的接口规格沿用老仓 god-papers（单元 `26082116etw`，只作参考）；
+语言判定（CJK 占比）是通用文本分析，跟着这个件走。
+
+## 邻居
+
+| 单元 | 是什么 | 这个件怎么用它 |
+| --- | --- | --- |
+| `26090705ymz/gwb-kernel` | gwb 内核（正线） | 本件挂它的线：服务注入、命令总线、事件通道、settings、data 都来自内核线的件 |
+| `26090814ifd/papers`（仓名以 unit.json 为准） | 论文库件 | 调用侧消费方：代码里注入 `gwbPdf2md`，本件不认识它 |
+| `26090520zzv/registry` | 本机 Verdaccio | 包源：发版发这儿，home 从这儿装 |
+| `26082116etw/god-papers`（老仓） | MinerU 客户端的老实现 | 只作参考：接口规格与 CJK 口径的出处 |
+
+## 当前阶段
+
+0.1.0 已发本机 registry，跟着内核 0.1 契约走（单进程线）。这个件没有浏览器半、没有窗格——
+纯 node 半的作业机，内核契约变了它多半不用动（迁 0.1 那次只改了一句注释，见[路线](/future/roadmap)）。

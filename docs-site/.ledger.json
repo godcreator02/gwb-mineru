@@ -1,0 +1,201 @@
+{
+  "content/docs/extract.mdx": {
+    "../src/core/extract.ts:47-76": {
+      "kind": "git",
+      "blob": "f80de942eb921d1c6258cdb38a75213d4532f036",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        47,
+        76
+      ],
+      "hash": "96eb20ff61d8d395cb58d1611fc169e7ccbbfacba5044fb07d7e407931a99eb9"
+    },
+    "../src/core/extract.ts:27-34": {
+      "kind": "git",
+      "blob": "f80de942eb921d1c6258cdb38a75213d4532f036",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        27,
+        34
+      ],
+      "hash": "57ebc2d18a633d28fbc90d53dc2b95c2a2ac2edb26edb9051efc20b6900bd9e3"
+    },
+    "../src/core/extract.ts:61-72": {
+      "kind": "git",
+      "blob": "f80de942eb921d1c6258cdb38a75213d4532f036",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        61,
+        72
+      ],
+      "hash": "91c6425b96d590852f1d1485cc84568e449c3f76499541863e4acfc82e3c4efb"
+    },
+    "../src/core/extract.ts:78-88": {
+      "kind": "git",
+      "blob": "f80de942eb921d1c6258cdb38a75213d4532f036",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        78,
+        88
+      ],
+      "hash": "4f1a253b21c449582b595b11530f22dba93fb8dae7a590b349a2c088f68f4f76"
+    },
+    "../src/core/extract.ts:36-45": {
+      "kind": "git",
+      "blob": "f80de942eb921d1c6258cdb38a75213d4532f036",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        36,
+        45
+      ],
+      "hash": "d952c94a3e11f005dfc91d2c638974a44f4fe75be206a11001abc568a8eacc46"
+    }
+  },
+  "content/docs/job-runner.mdx": {
+    "../src/index.ts:41-57": {
+      "kind": "git",
+      "blob": "0374e102a38441ce626b6d4468f124219c356c2f",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        41,
+        57
+      ],
+      "hash": "77d293139ab28f33f8a76b509202530c4f5e59f7b97ce8409056107bcf2d9165"
+    },
+    "../src/index.ts:84-92": {
+      "kind": "git",
+      "blob": "0374e102a38441ce626b6d4468f124219c356c2f",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        84,
+        92
+      ],
+      "hash": "d17b805ae3272a2112023b48d246633331a87751c83e62327a4d2a87a60a85e8"
+    },
+    "../src/index.ts:150-153": {
+      "kind": "git",
+      "blob": "0374e102a38441ce626b6d4468f124219c356c2f",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        150,
+        153
+      ],
+      "hash": "e002e20ac0b5430662f4837a92db9ff63a425cc4b7dbc09c79244c85dff72b02"
+    },
+    "../src/index.ts:15-21": {
+      "kind": "git",
+      "blob": "0374e102a38441ce626b6d4468f124219c356c2f",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        15,
+        21
+      ],
+      "hash": "fd4170dc7a9993c12e06fd55b9d9920950cc147210865dee1e40f17fca4ebff3"
+    },
+    "../src/index.ts:256-278": {
+      "kind": "git",
+      "blob": "0374e102a38441ce626b6d4468f124219c356c2f",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        256,
+        278
+      ],
+      "hash": "61ec3e267cbbc2043a764bc736fdba069e7edcbb42d4e09cd56e248a9d35e61e"
+    }
+  },
+  "content/docs/mineru-client.mdx": {
+    "../src/core/mineru.ts:40-72": {
+      "kind": "git",
+      "blob": "7542743742e04ebf689e7d4d2b316844a9511551",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        40,
+        72
+      ],
+      "hash": "d57c0ca535e3c70c65277053b0be41514c2e09b721351006d672b7dda2d03d6e"
+    },
+    "../src/core/mineru.ts:28-38": {
+      "kind": "git",
+      "blob": "7542743742e04ebf689e7d4d2b316844a9511551",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        28,
+        38
+      ],
+      "hash": "7f30b90bfe8964ea20a737342fa7362125e4abc203b66b55b75c27235154748a"
+    },
+    "../src/core/mineru.ts:96-105": {
+      "kind": "git",
+      "blob": "7542743742e04ebf689e7d4d2b316844a9511551",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        96,
+        105
+      ],
+      "hash": "745abecfd71013b2945166354434789a6f0545eb4ce3f69550ebd187cf6a950c"
+    },
+    "../src/core/mineru.ts:110-122": {
+      "kind": "git",
+      "blob": "7542743742e04ebf689e7d4d2b316844a9511551",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        110,
+        122
+      ],
+      "hash": "b87523cd942cdda5797463ac8cf843bfafb5bd93b61091397285dbd6a748b140"
+    },
+    "../src/core/mineru.ts:1-8": {
+      "kind": "git",
+      "blob": "7542743742e04ebf689e7d4d2b316844a9511551",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        1,
+        8
+      ],
+      "hash": "4695134d5272db210442f4d95f89506be3c4f3429b643ac1dcd9b966e938e0b8"
+    }
+  },
+  "content/docs/system-map.mdx": {
+    "tree ../src depth=2": {
+      "kind": "tree",
+      "names": [
+        "core/",
+        "core/extract.ts",
+        "core/mineru.ts",
+        "index.ts"
+      ]
+    }
+  },
+  "content/docs/usage.mdx": {
+    "../src/index.ts:59-70": {
+      "kind": "git",
+      "blob": "0374e102a38441ce626b6d4468f124219c356c2f",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        59,
+        70
+      ],
+      "hash": "88bba28a0baa1111f7d15a5b15108df342114b70ea73edc35eadbe7480cb0fbf"
+    },
+    "../src/index.ts:120-148": {
+      "kind": "git",
+      "blob": "0374e102a38441ce626b6d4468f124219c356c2f",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        120,
+        148
+      ],
+      "hash": "9402f7d4502251749880b59fc1e8ad6759b997f271637eb6204e7c9544f82a3d"
+    },
+    "../src/index.ts:72-78": {
+      "kind": "git",
+      "blob": "0374e102a38441ce626b6d4468f124219c356c2f",
+      "commit": "64b1b91cf3e837ba06fc417c80c417a33d38e179",
+      "lines": [
+        72,
+        78
+      ],
+      "hash": "7fdee1e7f64919c7e7142305e13084b10cbfcf7b98c85a035f898f2a1f7c2d5c"
+    }
+  }
+}

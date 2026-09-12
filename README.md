@@ -1,7 +1,7 @@
 # gwb-mineru
 
-MinerU 转换件：提供 **pdf2md 服务**（`ctx.gwbPdf2md`）——PDF 经 MinerU 云端转
-markdown，作业机形态，跑在 gwb-kernel（单元 `26090705ymz`）线上。
+MinerU 转换件：提供 **pdf2md 服务**（`ctx.gwbPdf2md`）——PDF 经 MinerU 云端转 markdown，
+作业机形态，跑在 gwb-kernel（单元 `26090705ymz`）线上。
 
 **件名与服务名不对应是有意的**：件名说谁在干活（MinerU 引擎），服务名与命令前缀
 （`pdf2md.*`）说干的是什么。消费方 inject 的永远是 `gwbPdf2md`。（曾用包名
@@ -12,16 +12,36 @@ markdown，作业机形态，跑在 gwb-kernel（单元 `26090705ymz`）线上�
 `gwbPdf2md` 做论文转换，agent 不直接碰它。独立用也行：`pdf2md.submit` 命令就是给
 「一个孤立 PDF 想要 markdown」的那扇门。
 
-- **作业模式**：`submit` 秒回作业号（总线 120s 硬超时，分钟级云端解析不能在线等）；
+* **作业模式**：`submit` 秒回作业号（命令是页面等着的一次调用，分钟级云端解析不能在线等）；
   状态机 `queued→uploading→running→done|failed|interrupted`；作业账经 gwbData 落盘、
   重启标 interrupted
-- **设置**：`mineru` 节一枚 `token`（secret）
-- **事件**：落定时经内核 emit 通道推界面一条 `job-settled`
+* **设置**：`mineru` 节一枚 `token`（secret）
+* **事件**：落定时经内核 emit 通道推界面一条 `job-settled`
 
 MinerU 客户端与 zip 解包沿用老仓 god-papers 的接口规格（单元 `26082116etw`，只作
 参考）；语言判定（CJK 占比）是通用文本分析，跟着这个件走。
 
+## 跑起来
+
 ```powershell
 pnpm install
-pnpm build
+pnpm build          # tsc 直出 dist/
+pnpm typecheck
 ```
+
+进 home：手动 `pnpm add @godcreator02/gwb-mineru` + `cordis.yml` 写条目（包发本机
+registry `http://127.0.0.1:4873/`）。用之前在设置里配 `mineru` 节的 `token`。
+
+## 文档
+
+文档站在 `docs-site/`（docfirst 六区）：
+
+```powershell
+cd docs-site
+pnpm dev                    # http://localhost:4317
+pnpm exec docfirst check    # 钉码门禁，单独跑
+```
+
+[轨迹区](/trajectory)记方向了断，一卡一文件、只增不改、不钉码。这份 README 是生成物，
+正本是 `docs-site/content/outputs/readme.mdx`，改完在 `docs-site` 跑
+`pnpm exec docfirst render --target ai` 重摆，一起提交。

@@ -1,0 +1,39 @@
+---
+title: 件改叫 gwb-mineru，服务保持 pdf2md——名不对应是有意的
+born-at: 2026-09-08T16:29
+type: choice
+parent: [2026-09-08-gwb-mineru]
+label: 名不对应
+domain: 命名
+---
+
+## 背景
+
+开仓时包名与件名是 `gwb-pdf2md`，跟服务名 `gwbPdf2md`、命令前缀 `pdf2md.*` 对应——这也是
+gwb 线的惯例：服务名跟件名走（`gwb-commands` 件 → `ctx.gwbCommands`）。用到第三个会话，
+发现「谁在干活」和「干的是什么」在这个件上是两回事：引擎随时可能是别家（本地解析、别家
+云端），而「把 PDF 变 markdown」这个功能不会变。名字系在引擎上，换引擎那天就得全 ecosystem
+跟着改 inject。
+
+## 结论与边界
+
+**件名说谁在干活，服务名与命令前缀说干的是什么**：
+
+- 包名与件名：`@godcreator02/gwb-mineru`——引擎命名（MinerU）
+- 服务：`ctx.gwbPdf2md`；命令：`pdf2md.submit` / `pdf2md.status` / `pdf2md.jobs`——功能命名
+- 消费方 inject 的永远是 `gwbPdf2md`，换引擎不动消费方代码
+
+曾用包名 `@godcreator02/gwb-pdf2md` 0.0.1–0.0.3 废弃，registry 上不再发新版；token 也顺手
+收进 `mineru` 节（节名跟 cordis.yml 条目 id 走）。人拍板（2026-09-08，commit `3110bfe`）。
+
+## 否掉的候选
+
+**连服务一起改名 `gwbMineru`**——名面全对应，看着整齐。否掉：服务名是消费方的契约面，
+改名没有任何行为收益，却让 papers 那边跟着改；而且引擎名进了契约，真换引擎那天要么再改
+一次，要么名字开始说谎。gwb 线「服务名跟件名走」的惯例从此在这里挂一个**有意例外**，
+例外写在卡的正文里，不悄悄破。
+
+## 依据
+
+commit `3110bfe`（2026-09-08T16:29）：包名、description、token 节名一次改齐；README 与
+服务头注释同步写明「名不对应是有意的」。

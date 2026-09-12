@@ -1,0 +1,50 @@
+---
+title: AGENTS（仓根正本）
+description: 仓根 AGENTS.md 由这一页摆出去——每次会话都得知道的硬约束；改这里，跑 docfirst render，一起提交
+---
+
+# gwb-mineru
+
+gwb 内核线（单元 `26090705ymz`）的 MinerU 转换件：`pdf2md` 服务（`ctx.gwbPdf2md`），
+PDF 经 MinerU 云端转 markdown。**件名是引擎（gwb-mineru）、服务与命令是功能（pdf2md.*），
+名不对应是有意例外**——消费方 inject 的永远是 `gwbPdf2md`。零库概念：输入 PDF 绝对路径
+与输出目录，产出 markdown + `images/`；不认识 papers（它在代码里局部注入本件）。
+
+## 怎么跑
+
+```powershell
+pnpm install && pnpm build && pnpm typecheck   # 门禁：build + typecheck，绿了才提交
+cd docs-site; pnpm dev                         # 文档站，http://localhost:4317
+pnpm exec docfirst check                       # 钉码门禁，单独跑，红了提交不许推
+```
+
+进 home：手动 `pnpm add @godcreator02/gwb-mineru` + `cordis.yml` 写条目。凭据：settings
+节 `mineru`、键 `token`（secret，mineru.net 申请）。包发本机 registry
+（`http://127.0.0.1:4873/`，`.npmrc` 已指）。
+
+## 硬约束
+
+- **零库概念不许破**：不认识 papers、不做归档与成品命名、不做结果缓存——产出原样落
+  调用方给的 outDir，交出去的就三样（markdown 文件名、lang、文件清单）
+- **submit 必须秒回**：作业号先回、后台跑全链，绝不把分钟级云端解析放进一次同步调用
+- **失败不自动重试**：失败原因如实进作业的 `error`；处置（重提）归调用方
+- **设置项必须在 init 里 `define`**：不声明 get 永远回 undefined、不报错（撞过，见文档站
+  轨迹区那面墙）
+
+## 代码地图
+
+`src/index.ts`（作业机：状态机、账、命令、事件）→ `src/core/mineru.ts`（云端三动作）→
+`src/core/extract.ts`（zip 解包 + CJK 语言判定）。后两块是纯函数模块、互不认识；细节读
+文档站现状区三页。
+
+## 生成物与实验材料
+
+- 仓根 `README.md` 与这份 `AGENTS.md` 都是**生成物**，正本在 `docs-site/content/outputs/`，
+  改正本后在 `docs-site` 跑 `pnpm exec docfirst render --target ai` 重摆，同提交
+- 实验与测量的材料落仓根 `probes/<时间戳>_<目的>/`：一次实验一个目录、自包含（自带依赖，
+  不进 pnpm workspace）、进 git、不进 docfirst check；evidence 卡在依据段用相对仓根的
+  路径指过去，判据见 trajectory skill
+- 轨迹卡（`docs-site/content/trajectory/`）只增不改、正文不许钉码
+
+写或改文档站之前读 docfirst-docs 说明书（经 gwb-docfirst-workflow 件开出，或读
+`D:\unitfolders\26090315xby\god-live-doc\docs-site\content\outputs\skills\` 包内正本）。

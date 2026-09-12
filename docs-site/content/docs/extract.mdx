@@ -1,0 +1,74 @@
+---
+title: 解包与语言：zip 原样落盘
+description: src/core/extract.ts——下载 zip、只搬 markdown 与 images/、认出 full.md、判 zh/en；零库概念在这一层兑现
+---
+
+# 解包与语言：zip 原样落盘
+
+**本页回答**：结果 zip 怎么变成 outDir 里的文件；markdown 怎么认、认不出怎么办；zh/en
+怎么判；「零库概念」具体指什么。
+
+## 管什么
+
+一条链：下载 zip → 挑出 markdown → 把 markdown 与 `images/` 原样解进 outDir → 按 CJK
+占比判语言。交出三样：markdown 文件名、lang、落盘文件清单。
+
+{/* ref file="../src/core/extract.ts" lines="47-76" */}
+
+## 不知道什么
+
+- 不知道 zip 从哪来——URL 是[云端客户端](/docs/mineru-client)轮询出来的
+- 不知道 outDir 之后被谁用、文件该叫什么——成品命名是调用方（如 papers）的私约
+- 不知道论文库存在——「归档副本 + 成品位」那套篇目录布局不在这儿，这个件只交原料
+
+## 数据结构
+
+{/* ref file="../src/core/extract.ts" lines="27-34" */}
+
+`markdown` 是 outDir 里那份完整 markdown 的**文件名**（如 `full.md`）；`files` 是相对
+outDir 的 POSIX 路径清单。
+
+## 提供的接口
+
+| 名字 | 是什么 |
+| --- | --- |
+| `downloadExtract(zipUrl, outDir)` | 下载、解包、判语言，回 `ExtractResult` |
+| `isChineseDominant(body)` | CJK 字数×3 ≥ ASCII 字母数判 zh（老仓口径原样） |
+| `ArchiveError` | zip 结构不符合预期时抛：找不到 markdown、或候选不唯一 |
+
+## 依赖的接口
+
+`adm-zip`（唯一的 runtime 依赖）、全局 `fetch`、`node:fs/promises`。零 gwb 依赖。
+
+## 怎么单独测
+
+两块天然可测：`isChineseDominant` 是纯函数，喂字符串即可；zip 认名逻辑（`findMarkdown`）
+喂条目名列表即可。但仓里没有单测设施，现状是 `pnpm typecheck` 加真链路实跑。
+
+## 代码地图
+
+- **在哪**：`src/core/extract.ts`，一个文件
+- **先读**：文件头注释（1–10 行）→ `downloadExtract`
+- **读序**：`downloadExtract`（下载 → 过滤 → 落盘 → 校验 → 判语言）→ `findMarkdown`
+  （认名）→ `isChineseDominant`（语言）
+- **可跳过**：`countMatches` / `zipBasename` 两个五行小件
+
+## 设计点（错了难改的那几条）
+
+**只搬 markdown 本体与 images/ 下的东西**：zip 根上的其余杂项（layout.json 之类）不落盘
+——调用方拿到的是干净的产出，不是云端的整包：
+
+{/* ref file="../src/core/extract.ts" lines="61-72" */}
+
+**认 markdown：full.md 优先，否则要求唯一**：优先认 `full.md`；没有它就得只有一份 `.md`，
+两份以上歧义即抛——猜一个，比报错贵：
+
+{/* ref file="../src/core/extract.ts" lines="78-88" */}
+
+**解包完自检一次**：markdown 不在清单里说明 outDir 状态不可信，当场抛、让作业进 failed
+——不带病返回。
+
+**语言判定跟着件走**：CJK 占比是通用文本分析，跟论文库没有关系；调用方拿 `lang` 去定
+自己的成品命名。口径是老仓原样：CJK 字数 × 3 ≥ ASCII 字母数判 zh。
+
+{/* ref file="../src/core/extract.ts" lines="36-45" */}

@@ -1,0 +1,5 @@
+# 不是 workspace：这个站是仓里的独立包（自己的依赖树与门禁）。
+# 这份文件只为 pnpm 11 的构建设置——esbuild 的安装脚本要跑（fumadocs-mdx 依赖它），
+# 不放行的话每次 install 都报 ERR_PNPM_IGNORED_BUILDS 退 1（pnpm 自己铺的脚手架文件）。
+allowBuilds:
+  esbuild: true

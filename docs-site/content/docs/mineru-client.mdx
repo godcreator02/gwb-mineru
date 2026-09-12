@@ -1,0 +1,76 @@
+---
+title: 云端客户端：MinerU v4 三动作
+description: src/core/mineru.ts——申请上传位、PUT 上传、轮询到终态；纯函数模块，HTTP 异常如实抛
+---
+
+# 云端客户端：MinerU v4 三动作
+
+**本页回答**：MinerU 云端那三次握手各自怎么走；什么算终态；超时为什么是「结算为 failed」
+而不是抛错。
+
+## 管什么
+
+三个动作：`requestUpload`（申请上传位，回 `[batch_id, upload_url]`）、`upload`（PDF 二进制
+PUT 到预签名 URL）、`poll`（轮询到终态）。外加 `isDone` 判定与 `MineruError` 业务错。
+
+{/* ref file="../src/core/mineru.ts" lines="40-72" */}
+
+## 不知道什么
+
+- 不知道作业、账、作业号——那是[作业机](/docs/job-runner)的事，这里只认调用方递进来的
+  token 与 batchId
+- 不知道 token 从哪来——settings 那层的事
+- 不知道结果怎么落盘——拿到 `full_zip_url` 后的事在[解包与语言](/docs/extract)
+
+## 数据结构
+
+解析结果。**字段名对位 API 原始 JSON 键，不改写**——`full_zip_url` / `err_msg` 这些下划线
+名字是 MinerU 的，不是本仓的：
+
+{/* ref file="../src/core/mineru.ts" lines="28-38" */}
+
+## 提供的接口
+
+| 名字 | 是什么 |
+| --- | --- |
+| `requestUpload(token, name)` | 申请上传位，回 `[batchId, uploadUrl]` |
+| `upload(uploadUrl, pdfPath)` | PUT 二进制，不带 Content-Type（接口规格如此） |
+| `poll(token, batchId, options)` | 轮询到终态；被打断抛 AbortError，超时**结算为 failed** |
+| `isDone(result)` | `state === 'done'` |
+| `MineruError` | HTTP 200 但业务 code 非 0 时抛 |
+
+## 依赖的接口
+
+只有全局 `fetch` 与 `AbortSignal`，外加 `node:fs` 读文件。零 gwb 依赖、零 cordis 依赖——
+这是个纯 node 模块，拿起就走。
+
+## 怎么单独测
+
+纯函数模块，`node --test` 就能直测（喂假 fetch 即可）——但仓里没有单测设施，现状是
+`pnpm typecheck` 加真链路实跑（真 token、真云端，见[作业机](/docs/job-runner)怎么单独测）。
+
+## 代码地图
+
+- **在哪**：`src/core/mineru.ts`，一个文件
+- **先读**：文件头注释（1–8 行）→ `poll`
+- **读序**：`requestUpload` → `upload` → `poll`（循环体：unwrap 回包 → `toResult` →
+  终态判断 → 超时判断 → `sleep` 等下一轮）
+- **可跳过**：`raiseForStatus` / `sleep` / `zipBasename` 这类五行小件
+
+## 设计点（错了难改的那几条）
+
+**HTTP 层异常如实抛，不在这吞**——收进作业的 `error` 是[作业机](/docs/job-runner)的事；
+但**轮询超时不抛，结算为 failed**（err_msg 写明超时）：超时不是异常，是这条解析链的一种
+终局，调用方按终态处置就行：
+
+{/* ref file="../src/core/mineru.ts" lines="96-105" */}
+
+**被打断要立刻醒**：件卸载 abort 时，`sleep` 里那个监听器先于定时器把 promise 拒掉——
+不等满一轮间隔：
+
+{/* ref file="../src/core/mineru.ts" lines="110-122" */}
+
+**老仓是一批多文件，这个件一作业一文件**：申请上传位的 `files` 数组长度恒为 1，语义不变
+（接口规格沿用老仓 god-papers 的 mineru.ts，单元 `26082116etw`，只作参考）：
+
+{/* ref file="../src/core/mineru.ts" lines="1-8" */}

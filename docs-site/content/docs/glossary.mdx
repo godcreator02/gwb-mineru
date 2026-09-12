@@ -1,0 +1,45 @@
+---
+title: 术语表
+description: 这个件造的词、gwb 线的词在这儿有特定含义的——每个词一句定义，指到详解页
+---
+
+# 术语表
+
+**本页回答**：文档里那个词到底指什么。收这个件自己造的、与通用词在这里有特定含义的词；
+通用编程词不收。
+
+## 这个件
+
+| 词 | 是什么 |
+| --- | --- |
+| **作业机** | 这个件的形态：`submit` 秒回作业号、后台跑全链、终态事件。对应 `src/index.ts` 的服务，见[作业机](/docs/job-runner) |
+| **作业** | 一次 PDF → markdown 转换的账（`Pdf2mdJob`）：输入、输出目录、状态、成败原因、产出三样。落盘就是它 |
+| **状态机六态** | `queued → uploading → running → done \| failed \| interrupted`；后三个是终态，到任一不再变化 |
+| **作业账** | 作业记录的落盘副本，经 gwbData 存进文档 `jobs`。重启后靠它对账 |
+| **interrupted** | 宿主重启或件卸载打断的作业——账如实标注，不自动重跑；处置是重提一次。见[用法](/docs/usage)坑三条 |
+| **零库概念** | 输入一个 PDF 绝对路径、一个输出目录，产出 markdown + images/。不知道 papers 存在，不做归档、不做成品命名 |
+| **语言判定** | 正文 zh/en 的判定：CJK 字数 × 3 ≥ ASCII 字母数判 zh。老仓口径原样，见[解包与语言](/docs/extract) |
+| **`job-settled`** | 作业到终态时经内核 emit 通道推的界面事件。给看着界面的人，不是给 agent 的回执 |
+| **名不对应** | 件叫 `gwb-mineru`（说谁在干活：MinerU 引擎），服务与命令叫 `pdf2md.*`（说干什么：转换）。有意例外，见[那张卡](/trajectory/2026-09-08-engine-vs-function-naming) |
+
+## gwb 线的词（在这里的含义）
+
+| 词 | 是什么 |
+| --- | --- |
+| **件** | gwb 线的插件：一个 npm 包，装进 home、经 cordis 挂载，一仓一包一件。内核线的正本见 gwb-kernel 的文档站 |
+| **home** | 件住的地方，一个普通的 npm 项目根；本件的凭据节 `mineru` 也住那边的 settings |
+| **static inject** | cordis 的硬依赖声明：`static inject = ['gwbCommands', …]`——缺谁这个件不挂。本件对 settings / data / commands 用它 |
+| **局部注入** | `ctx.inject(['gwbSkills'], …)` 那种可选依赖：没装 skills 件的 home 里作业机照常挂 |
+| **gwbData** | gwb-data 件提供的小型落盘服务（`readDoc` / `writeDoc`）。作业账的存放处 |
+| **设置节** | settings 里按件分的节。本件的节名 `mineru`（跟 cordis.yml 条目 id 走），键 `token`，类型 secret |
+| **MinerU** | 云端 PDF 解析服务（mineru.net），vlm 模型，公式表格都开。解析是分钟级的——作业形态的全部理由 |
+| **`full.md`** | MinerU 结果 zip 里完整 markdown 的标准名。解包时优先认它，没有则要求 `.md` 唯一 |
+
+## 文档与账本
+
+| 词 | 是什么 |
+| --- | --- |
+| **docfirst** | 文档论断钉在真源码上的机制：引用记号 + git 记忆 + 账本。正本见 docfirst 站 |
+| **钉码** | 页里指向某段代码的正式引用（`{/* ref … */}`）。代码一改就报黄，得人复核。只出现在现状区 |
+| **六区** | docs / trajectory / spec / future / outputs / feedback——目录即状态，六种生命周期 |
+| **轨迹卡** | `content/trajectory/` 一卡一文件，记方向了断，只增不改、不钉码 |
