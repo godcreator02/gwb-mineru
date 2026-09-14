@@ -49,6 +49,6 @@ queued → uploading → running → done | failed
 | --- | --- |
 | 门禁 | `pnpm build` + `pnpm typecheck`（仓根）；`pnpm exec docfirst check`（docs-site，单独跑） |
 | 文档站 dev | `pnpm dev`（docs-site 下），端口 4317 |
-| 本机 Verdaccio | `https://git.tianshen02.online:28377/api/packages/team/npm/`，`@godcreator02` scope 指向它（`.npmrc`） |
+| 本机 Verdaccio | `https://git.tianshen02.online:28377/api/packages/team/npm/`，`@team` scope 指向它（`.npmrc`） |
 | 凭据 | settings 节 `mineru`，键 `token`（secret），mineru.net 申请 |
 | 事件 | `source: "gwb-mineru"`、`type: "job-settled"`，载荷带 jobId / ok / outDir / error |
