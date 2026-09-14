@@ -5,7 +5,7 @@ MinerU 转换件：提供 **pdf2md 服务**（`ctx.gwbPdf2md`）——PDF 经 Mi
 
 **件名与服务名不对应是有意的**：件名说谁在干活（MinerU 引擎），服务名与命令前缀
 （`pdf2md.*`）说干的是什么。消费方 inject 的永远是 `gwbPdf2md`。（曾用包名
-`@godcreator02/gwb-pdf2md` 0.0.1–0.0.3，已废弃更名。）
+`@team/gwb-pdf2md` 0.0.1–0.0.3，已废弃更名。）
 
 **零库概念**——输入一个 PDF 绝对路径、一个输出目录，产出完整 markdown + `images/`
 原样落 outDir。不知道 papers 存在；papers（单元 `26090814ifd`）在代码里局部注入
@@ -29,8 +29,8 @@ pnpm build          # tsc 直出 dist/
 pnpm typecheck
 ```
 
-进 home：手动 `pnpm add @godcreator02/gwb-mineru` + `cordis.yml` 写条目（包发本机
-registry `http://127.0.0.1:4873/`）。用之前在设置里配 `mineru` 节的 `token`。
+进 home：手动 `pnpm add @team/gwb-mineru` + `cordis.yml` 写条目（包发本机
+registry `https://git.tianshen02.online:28377/api/packages/team/npm/`）。用之前在设置里配 `mineru` 节的 `token`。
 
 ## 文档
 
