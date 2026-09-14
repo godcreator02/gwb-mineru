@@ -13,9 +13,9 @@ cd docs-site; pnpm dev                         # 文档站，http://localhost:43
 pnpm exec docfirst check                       # 钉码门禁，单独跑，红了提交不许推
 ```
 
-进 home：手动 `pnpm add @team/gwb-mineru` + `cordis.yml` 写条目。凭据：settings
+进 home：手动 `pnpm add @godcreator/gwb-mineru` + `cordis.yml` 写条目。凭据：settings
 节 `mineru`、键 `token`（secret，mineru.net 申请）。包发本机 registry
-（`https://git.tianshen02.online:28377/api/packages/team/npm/`，`.npmrc` 已指）。
+（`https://git.tianshen02.online:28377/api/packages/godcreator/npm/`，`.npmrc` 已指）。
 
 ## 硬约束
 
