@@ -39,7 +39,7 @@ queued → uploading → running → done | failed
 | --- | --- |
 | `<outDir>/full.md` | 完整 markdown（名字以作业 `markdown` 字段为准，通常是 full.md） |
 | `<outDir>/images/…` | 正文引用的图，跟 md 同层的相对链接，不用改 |
-| `<home>/node_modules/@godcreator02/gwb-mineru` | 件本体；进 home 手动 `pnpm add` + `cordis.yml` 条目 |
+| `<home>/node_modules/@team/gwb-mineru` | 件本体；进 home 手动 `pnpm add` + `cordis.yml` 条目 |
 
 作业账经 gwbData 落在 home 的数据区（文档名 `jobs`），不是文件树的公开面。
 
@@ -49,6 +49,6 @@ queued → uploading → running → done | failed
 | --- | --- |
 | 门禁 | `pnpm build` + `pnpm typecheck`（仓根）；`pnpm exec docfirst check`（docs-site，单独跑） |
 | 文档站 dev | `pnpm dev`（docs-site 下），端口 4317 |
-| 本机 Verdaccio | `http://127.0.0.1:4873/`，`@godcreator02` scope 指向它（`.npmrc`） |
+| 本机 Verdaccio | `https://git.tianshen02.online:28377/api/packages/team/npm/`，`@godcreator02` scope 指向它（`.npmrc`） |
 | 凭据 | settings 节 `mineru`，键 `token`（secret），mineru.net 申请 |
 | 事件 | `source: "gwb-mineru"`、`type: "job-settled"`，载荷带 jobId / ok / outDir / error |
