@@ -9,7 +9,7 @@ import type {} from '@godcreator/gwb-data'
 import type {} from '@godcreator/gwb-settings'
 import type {} from '@godcreator/gwb-skills'
 import { downloadExtract } from './core/extract.js'
-import { isDone, poll, requestUpload, upload, type FileResult } from './core/mineru.js'
+import { MAX_FILE_BYTES, isDone, poll, requestUpload, upload, type FileResult } from './core/mineru.js'
 
 /**
  * pdf2md 服务：MinerU 云端转换的作业机。**submit 秒回、后台跑完落盘**——
@@ -32,11 +32,14 @@ import { isDone, poll, requestUpload, upload, type FileResult } from './core/min
  */
 
 const PLUGIN_NAME = 'gwb-mineru'
+/** 命令登记的 plugin 字段认包名 */
+const PACKAGE_NAME = '@godcreator/gwb-mineru'
 const JOBS_DOC = 'jobs'
 
-/** 轮询节奏与上限（秒），沿用老仓默认 */
+/** 轮询节奏与上限（秒）：5 秒一问；云端干活时进度停滞 10 分钟判失败；连排队在内总上限 1 小时 */
 const POLL_INTERVAL_S = 5
-const POLL_TIMEOUT_S = 300
+const POLL_STALL_S = 600
+const POLL_TIMEOUT_S = 3600
 
 export type JobState = 'queued' | 'uploading' | 'running' | 'done' | 'failed' | 'interrupted'
 
@@ -50,6 +53,8 @@ export interface Pdf2mdJob {
   readonly updatedAt: string
   readonly error?: string
   readonly batchId?: string
+  /** 云端报来的解析进度（running 时才有；done 时补满） */
+  readonly progress?: { readonly extractedPages: number; readonly totalPages: number }
   /** 转换成功后交出的三样 */
   readonly markdown?: string
   readonly lang?: 'zh' | 'en'
@@ -119,7 +124,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     if (cli === undefined) return
     this.own.effect(() =>
       cli.register(
-        { name: 'pdf2md.submit', description: '提交 PDF 转 markdown 作业：{ input, outDir }。秒回作业号，成败看 pdf2md.status', plugin: PLUGIN_NAME },
+        { name: 'pdf2md.submit', description: '提交 PDF 转 markdown 作业：{ input, outDir }。秒回作业号，成败看 pdf2md.status', plugin: PACKAGE_NAME },
         async (args) => {
           const raw = isRecord(args) ? args : {}
           const input = raw['input']
@@ -131,13 +136,13 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
       ),
     )
     this.own.effect(() =>
-      cli.register({ name: 'pdf2md.jobs', description: '全部转换作业（新的在前）', plugin: PLUGIN_NAME }, () => ({
+      cli.register({ name: 'pdf2md.jobs', description: '全部转换作业（新的在前）', plugin: PACKAGE_NAME }, () => ({
         count: this.table.size,
         jobs: this.list(),
       })),
     )
     this.own.effect(() =>
-      cli.register({ name: 'pdf2md.status', description: '查一条转换作业：{ id }', plugin: PLUGIN_NAME }, (args) => {
+      cli.register({ name: 'pdf2md.status', description: '查一条转换作业：{ id }。云端解析中带 progress（已解析页 / 总页）', plugin: PACKAGE_NAME }, (args) => {
         const raw = isRecord(args) ? args : {}
         const id = raw['id']
         if (typeof id !== 'string' || id === '') throw new Error('pdf2md.status 要 { id: string }')
@@ -162,9 +167,10 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     if (!path.isAbsolute(outDir)) throw new Error(`outDir 得是绝对路径：${outDir}`)
     const fileStat = await stat(input).catch(() => undefined)
     if (fileStat === undefined || !fileStat.isFile()) throw new Error(`input 不是个能读的文件：${input}`)
-    await mkdir(outDir, { recursive: true })
+    if (fileStat.size > MAX_FILE_BYTES) throw new Error(`input 超过 MinerU 单文件上限 200MB，拆小了再提：${input}`)
     const token = this.token()
-    if (token === undefined) throw new Error('MinerU token 没配——先在设置里填，或 settings_set { section: "mineru", key: "token" }')
+    if (token === undefined) throw new Error('MinerU token 没配——先在设置里填，或 settings.set { section: "mineru", key: "token", value: "…" }')
+    await mkdir(outDir, { recursive: true })
 
     const id = `${nowIso().replaceAll(/[-:TZ.]/g, '').slice(0, 14)}-${String(++this.jobSeq)}`
     const at = nowIso()
@@ -208,7 +214,9 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
       await this.finish(job.id, 'running')
       const result: FileResult = await poll(token, batchId, {
         interval: POLL_INTERVAL_S,
+        stallTimeout: POLL_STALL_S,
         timeout: POLL_TIMEOUT_S,
+        onProgress: (pending) => this.noteProgress(job.id, pending),
         signal: controller.signal,
       })
       if (!isDone(result)) {
@@ -217,11 +225,28 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
       }
 
       const extracted = await downloadExtract(result.full_zip_url ?? '', job.outDir)
-      await this.finish(job.id, 'done', { markdown: extracted.markdown, lang: extracted.lang, files: [...extracted.files] })
+      const seen = this.get(job.id)?.progress
+      await this.finish(job.id, 'done', {
+        markdown: extracted.markdown,
+        lang: extracted.lang,
+        files: [...extracted.files],
+        ...(seen !== undefined ? { progress: { extractedPages: seen.totalPages, totalPages: seen.totalPages } } : {}),
+      })
       this.info(`作业 ${job.id} 转换完成：${extracted.markdown}（${extracted.lang}，${String(extracted.files.length)} 个文件）`)
     } finally {
       this.controllers.delete(job.id)
     }
+  }
+
+  /** 轮询回包带来的进度：变了才落账，没变不写盘。只记账不推事件 */
+  private noteProgress(id: string, result: FileResult): void {
+    const cloud = result.extract_progress
+    const prev = this.table.get(id)
+    if (cloud === null || prev === undefined) return
+    if (prev.progress?.extractedPages === cloud.extracted_pages && prev.progress.totalPages === cloud.total_pages) return
+    const progress = { extractedPages: cloud.extracted_pages, totalPages: cloud.total_pages }
+    this.table.set(id, { ...prev, progress, updatedAt: nowIso() })
+    void this.persist()
   }
 
   /** 状态推进 + 落账。终态时往界面推一条事件（走内核那条 emit 通道，载荷自带 source） */

@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-mineru",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {"name": "godcreator"},
   "description": "MinerU 转换件：一个 gwb 件。提供 pdf2md 服务——PDF 经 MinerU 云端转 markdown，作业模式：submit 秒回、后台跑完落盘",
   "type": "module",
