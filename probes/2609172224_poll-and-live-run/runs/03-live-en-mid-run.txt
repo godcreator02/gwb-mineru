@@ -1,0 +1,25 @@
+（抄录：2026-09-17 22:22:02 +0800，devkit.cdp mineru-2609172219 cmd pdf2md.status {"id":"20260917142146-1"} 的回执原文。
+ 作业 14:21:46Z 提交，这一眼在提交后约 16 秒——云端解析中途，这一刻无法重跑取得，故抄录。）
+
+{
+  "page": "gwb",
+  "在哪个home": "mineru-2609172219",
+  "did": "cmd",
+  "命令": "pdf2md.status",
+  "回执": {
+    "ok": true,
+    "data": {
+      "id": "20260917142146-1",
+      "input": "D:\\unitfolders\\26090815vvu\\papers\\files\\0df23805ca6e0b0f70f48de8bb8f8b69\\Reducing_Overvoltage_Stress_on_FB-SMs_in_the_Coordinated_Operation_of_Hybrid_MMCS_and_Hybrid_CBs_During_DC-side_Fault_Conditions.pdf",
+      "outDir": "C:\\Users\\GODAME~1\\AppData\\Local\\Temp\\claude\\D--unitfolders-26090815aaa-gwb-mineru\\85dea306-af38-407f-97bc-7f255c3b6eae\\scratchpad\\run-en",
+      "state": "running",
+      "createdAt": "2026-09-17T14:21:46.367Z",
+      "updatedAt": "2026-09-17T14:21:55.502Z",
+      "batchId": "2ef4305e-735b-405d-ab84-f5c0a5067fc1",
+      "progress": {
+        "extractedPages": 5,
+        "totalPages": 6
+      }
+    }
+  }
+}

@@ -11,7 +11,7 @@ description: src/index.ts——submit 秒回、后台全链、作业账落盘、
 ## 管什么
 
 作业的一生：验参落账秒回、后台跑全链（申请上传位 → 上传 → 轮询 → 解包）、每步推进落账、
-终态推 UI 事件、启动对账、卸载打断。命令面 `pdf2md.*` 三条与说明书注册也在这层。
+云端进度变了记账、终态推 UI 事件、启动对账、卸载打断。命令面 `pdf2md.*` 三条与说明书注册也在这层。
 
 ## 不知道什么
 
@@ -25,10 +25,11 @@ description: src/index.ts——submit 秒回、后台全链、作业账落盘、
 
 一条作业的账，落盘就是它——只装可序列化的东西：
 
-{/* ref file="../src/index.ts" lines="41-57" */}
+{/* ref file="../src/index.ts" lines="44-62" */}
 
 `state` 六态：`queued → uploading → running → done | failed | interrupted`，后三态是终态。
-`queued` 是瞬态——submit 落完账立刻开跑。
+`queued` 是瞬态——submit 落完账立刻开跑。`progress` 是云端报来的已解析页 / 总页，`running`
+期间才会出现，done 时补满；云端排队时没有它。
 
 ## 提供的接口
 
@@ -51,24 +52,27 @@ description: src/index.ts——submit 秒回、后台全链、作业账落盘、
 引用跨不到消费者扩展，所以用的时候一律 `this.own.<服务>` 现取（那晚的修理与翻案见
 [那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）：
 
-{/* ref file="../src/index.ts" lines="84-92" */}
+{/* ref file="../src/index.ts" lines="89-97" */}
 
 skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 
-{/* ref file="../src/index.ts" lines="150-153" */}
+{/* ref file="../src/index.ts" lines="155-158" */}
 
 ## 怎么单独测
 
 仓里没有单测设施，现状两条：`pnpm typecheck` 守类型；真链路进隔离 home 实跑（要真 token、
-真云端）。能单测的两块被刻意切在服务外面——云端客户端与解包都是纯函数模块，不欠 cordis，
+真云端——`devkit.home.new` 开 home、`plugin-manager.install` 装件、`devkit.dev` 换开发版、
+`settings.set` 填 token，一趟实跑的完整记录在 `probes/2609172224_poll-and-live-run/`）。
+能单测的两块被刻意切在服务外面——云端客户端与解包都是纯函数模块，不欠 cordis，
 这正是依赖方向单向的回报。
 
 ## 代码地图
 
 - **在哪**：`src/index.ts`，一个文件
-- **先读**：文件头注释（14–32 行，自我介绍）→ `submit`（160 行）→ `run`（197 行）
+- **先读**：文件头注释（14–32 行，自我介绍）→ `submit`（165 行）→ `run`（204 行）
 - **读序**：`[Service.init]`（登记命令与设置、启动对账）→ `submit`（验参落账秒回）→
-  `run`（后台全链）→ `finish`（状态推进 + 终态 emit）→ `persist` / `load`（账的写与对账）
+  `run`（后台全链）→ `noteProgress`（进度记账）→ `finish`（状态推进 + 终态 emit）→
+  `persist` / `load`（账的写与对账）
 - **可跳过**：`dist/`（tsc 产物）
 
 ## 设计点（错了难改的那几条）
@@ -84,7 +88,18 @@ skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 **启动对账与卸载打断，只标不重跑**：重启后上次留下的非终态作业标 `interrupted`（理由写进
 error），件卸载时 abort 还在跑的控制器再标一遍——不丢账、不假装还在跑，也**不**自动重提：
 
-{/* ref file="../src/index.ts" lines="256-278" */}
+{/* ref file="../src/index.ts" lines="281-303" */}
+
+**进度只记账，不推事件**：轮询每 5 秒一问，云端报的页数变了才写盘，没变不写；界面事件仍只有
+落定那一条 `job-settled`——看进度的人查 status，件不把每一轮回包转发成事件：
+
+{/* ref file="../src/index.ts" lines="241-250" */}
+
+**轮询的三个数定在这层**：5 秒一问、云端干活时进度停滞 10 分钟判失败、连排队在内总上限
+1 小时。怎么判停滞在[云端客户端](/docs/mineru-client)；数值是作业机的取舍——长文档与低优先级
+排队不该被墙钟误杀（误杀的代价是调用方重提、同一份页数再扣一次额度），卡死的也不该无限等：
+
+{/* ref file="../src/index.ts" lines="39-42" */}
 
 **设置项必须在 init 里 define**：不声明的话 get 永远回 undefined——实机撞过一轮，症状是
 「token 明明在 settings.json 里，命令却报没配」（见[那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）。

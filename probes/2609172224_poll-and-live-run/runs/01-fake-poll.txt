@@ -1,0 +1,43 @@
+# poll 与回包解读（假 fetch）  2026-09-17T14:24:15.808Z  node v24.14.1
+
+{
+  "1 排队久不判停滞→done": {
+    "file_name": "a.pdf",
+    "state": "done",
+    "full_zip_url": "z",
+    "err_msg": null,
+    "extract_progress": null
+  },
+  "1 onProgress 依次看到": [
+    "pending:-",
+    "pending:-",
+    "pending:-",
+    "pending:-",
+    "pending:-",
+    "pending:-",
+    "pending:-",
+    "pending:-",
+    "running:3",
+    "running:7"
+  ],
+  "2 解析中页数不动→停滞": {
+    "file_name": "a.pdf",
+    "state": "failed",
+    "full_zip_url": null,
+    "err_msg": "云端解析停滞：0.1s 内状态与已解析页数都没动（云端可能还在跑，只是没人再取结果）",
+    "extract_progress": {
+      "extracted_pages": 4,
+      "total_pages": 10
+    }
+  },
+  "3 一直排队→总上限": {
+    "file_name": "a.pdf",
+    "state": "failed",
+    "full_zip_url": null,
+    "err_msg": "轮询超时：0.15s 内没解析完（云端可能还在跑，只是没人再取结果）",
+    "extract_progress": null
+  },
+  "4 401+msgCode A0211": "MineruError: MinerU 返回错误：code=A0211 msg=user token expired。token 无效或过期：去 mineru.net 的 API 管理页换一个，再 settings.set { section: \"mineru\", key: \"token\", value: \"…\" }",
+  "5 200+code -60018": "MineruError: MinerU 返回错误：code=-60018 msg=limit。今天的解析任务数到上限了，明天再提",
+  "6 纯文本 401": "Error: HTTP 401 Unauthorized：login required"
+}

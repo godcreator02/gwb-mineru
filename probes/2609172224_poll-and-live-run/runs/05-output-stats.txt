@@ -1,0 +1,4 @@
+# 两次实跑的产出统计  2026-09-17 22:25:19 +08:00
+（产出落在会话 scratchpad，不进仓；正文是论文原文，这里只留数字）
+run-real  full.md=48477 bytes  标题行=23  images/ 文件=71  正文 images/ 引用=17  行内公式≈162  块公式≈52  html 表格=2
+run-en  full.md=32556 bytes  标题行=13  images/ 文件=17  正文 images/ 引用=11  行内公式≈68  块公式≈5  html 表格=1

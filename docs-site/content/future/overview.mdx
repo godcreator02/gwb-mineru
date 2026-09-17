@@ -37,10 +37,12 @@ MinerU 客户端与 zip 解包的接口规格沿用老仓 god-papers（单元 `2
 | --- | --- | --- |
 | `26090705ymz/gwb-kernel` | gwb 内核（正线） | 本件挂它的线：服务注入、命令总线、事件通道、settings、data 都来自内核线的件 |
 | `26090814ifd/papers`（仓名以 unit.json 为准） | 论文库件 | 调用侧消费方：代码里注入 `gwbPdf2md`，本件不认识它 |
-| `26090520zzv/registry` | 本机 Verdaccio | 包源：发版发这儿，home 从这儿装 |
+| gitea 个人源 | `https://git.tianshen02.online:28377/api/packages/godcreator/npm/` | 包源：发版发这儿，home 从这儿装（scope 路由住用户级 `~/.npmrc`） |
 | `26082116etw/god-papers`（老仓） | MinerU 客户端的老实现 | 只作参考：接口规格与 CJK 口径的出处 |
 
 ## 当前阶段
 
-0.1.0 已发本机 registry，跟着内核 0.1 契约走（单进程线）。这个件没有浏览器半、没有窗格——
+0.2.0 发 gitea 个人源，跟着内核 0.1 契约走（单进程线）。这个件没有浏览器半、没有窗格——
 纯 node 半的作业机，内核契约变了它多半不用动（迁 0.1 那次只改了一句注释，见[路线](/future/roadmap)）。
+会让它动的是**云端 API 本身**：0.2.0 就是对着 mineru.net 现行文档对齐的一轮（超时看进度、
+回包错误翻译），下一次多半也是云端改了什么。

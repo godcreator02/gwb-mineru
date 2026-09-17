@@ -1,0 +1,38 @@
+# MinerU v4 错误形状  2026-09-17T14:24:09.971Z  node v24.14.1  真 token 那两格：跑了
+
+## 坏 token，申请上传位（插件第一步）
+POST /api/v4/file-urls/batch
+HTTP 401 Unauthorized
+content-type: application/json
+{"traceId":"06bf31608a7b","msgCode":"A0211","msg":"user token expired","data":null,"success":false,"total":0}
+
+## 坏 token，查批次结果（插件轮询那步）
+GET /api/v4/extract-results/batch/00000000-0000-0000-0000-000000000000
+HTTP 401 Unauthorized
+content-type: application/json
+{"traceId":"ea9ae48a0c50","msgCode":"A0211","msg":"user token expired","data":null,"success":false,"total":0}
+
+## 坏 token，查单任务
+GET /api/v4/extract/task/00000000-0000-0000-0000-000000000000
+HTTP 401 Unauthorized
+content-type: application/json
+{"traceId":"9cb587cc4311","msgCode":"A0211","msg":"user token expired","data":null,"success":false,"total":0}
+
+## 不带鉴权，查批次结果
+GET /api/v4/extract-results/batch/00000000-0000-0000-0000-000000000000
+HTTP 401 Unauthorized
+content-type: text/plain; charset=utf-8
+login required
+
+## 真 token，查不存在的批次
+GET /api/v4/extract-results/batch/00000000-0000-0000-0000-000000000000
+HTTP 200 OK
+content-type: application/json; charset=utf-8
+{"code":-60012,"msg":"task not found or expire"}
+
+## 真 token，查不存在的单任务
+GET /api/v4/extract/task/00000000-0000-0000-0000-000000000000
+HTTP 200 OK
+content-type: application/json; charset=utf-8
+{"code":-60012,"msg":"task not found or expire"}
+

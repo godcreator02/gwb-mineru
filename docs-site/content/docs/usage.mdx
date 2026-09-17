@@ -14,32 +14,36 @@ description: 消费方 inject gwbPdf2md，agent 走 pdf2md.* 三条命令；toke
   / `get(id)` / `list()`。papers（单元 `26090814ifd`）就是这么在代码里注入做论文转换的，agent
   面上只有 `papers.convert`，不直接碰这个件
 
-{/* ref file="../src/index.ts" lines="59-70" */}
+{/* ref file="../src/index.ts" lines="64-75" */}
 
 - **agent（命令）**：`pdf2md.submit` / `pdf2md.status` / `pdf2md.jobs` 三条，「一个孤立 PDF 想要
   markdown」走这边
 
-{/* ref file="../src/index.ts" lines="120-148" */}
+{/* ref file="../src/index.ts" lines="125-153" */}
 
 ## submit 秒回，成败看 status
 
 **返回不是完成。** MinerU 云端解析是分钟级的，而命令是页面等着的一次调用——所以作业号先回，
-后台跑全链，终态经 `pdf2md.status` 查、或等 `job-settled` 事件。轮询节奏 5 秒一问、单作业上限
-300 秒，到点没完结算为 `failed`（error 说明超时）。
+后台跑全链，终态经 `pdf2md.status` 查、或等 `job-settled` 事件。轮询 5 秒一问；云端解析中
+页数 10 分钟不动、或连排队在内 1 小时没完，结算为 `failed`（error 说明是停滞还是超时）。
+解析中的作业带 `progress`（已解析页 / 总页），云端排队时没有它。
 
 done 的作业带三样：`markdown`（outDir 里那份完整 markdown 的文件名，通常是 `full.md`）、
 `lang`（zh/en，按 CJK 占比判）、`files`（落盘清单）。正文里的图是 `images/xxx` 相对链接，
 跟 md 同层，不用改。
 
-## token 缺席当场挡
+## token 缺席当场挡，token 失效写进 error
 
-设置节 `mineru`、键 `token`（secret），mineru.net 申请；没配时 submit 报一句「MinerU token 没配」，
-不会排出一个注定失败的作业：
+设置节 `mineru`、键 `token`（secret），在 mineru.net 的 API 管理页创建；没配时 submit 报一句
+「MinerU token 没配」，不会排出一个注定失败的作业：
 
-{/* ref file="../src/index.ts" lines="72-78" */}
+{/* ref file="../src/index.ts" lines="77-83" */}
 
-配置命令：`settings_set { "section": "mineru", "key": "token", "value": "…" }`。值是 secret，
+配置命令：`settings.set { "section": "mineru", "key": "token", "value": "…" }`。值是 secret，
 status 与日志里永远看不到它。token 是**现取现读**的——settings 改值不用重挂件。
+
+配了但无效或过期的 token submit 挡不住（要问云端才知道），作业会在几秒内 `failed`，error 里带
+`code=A0211` 与换 token 的那句话；换完重提即可。
 
 ## 事件与终态
 
@@ -51,10 +55,11 @@ jobId / ok / outDir / error）。**事件是给看着界面的人的，不是给
 
 - **`interrupted`**：宿主重启或件卸载把作业打断了，账上如实标注。MinerU 侧可能其实做完了，但
   结果没人取——**重提一次作业就是了**（同一个 PDF 再 submit 一遍），没有恢复续跑
-- **失败原因看 `error`**：上传失败、解析失败、轮询超时、zip 结构不对，都在那一格，日志里也有
-  同一句
-- **两个参数都得是绝对路径**：`input` 得是存在的文件，`outDir` 不存在会递归建——submit 当场验，
-  验不过抛错不落账
+- **失败原因看 `error`**：上传失败、解析失败、停滞或超时、zip 结构不对、云端业务错，都在那一格，
+  日志里也有同一句。认得出的云端错误码（token 失效、超 200MB、超 200 页、当天任务数到顶）附一句
+  照着就能做的话
+- **两个参数都得是绝对路径**：`input` 得是存在的文件、不超过 200MB，`outDir` 不存在会递归建——
+  submit 当场验，验不过抛错不落账（也不建 outDir）。200 页上限要云端数，超了作业 failed
 
 说明书（给 agent 的那份）住包内 `skills/pdf2md/SKILL.md`，经 gwb-skills 件开出；没装 skills 件
 的 home 里作业机照常挂——skills 是局部可选注入。

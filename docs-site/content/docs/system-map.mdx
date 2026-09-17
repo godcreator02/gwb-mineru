@@ -14,7 +14,7 @@ description: 三块代码、一条作业的一生、盘上落了什么——一�
 | 模块 | 是什么 | 详见 |
 | --- | --- | --- |
 | **作业机**（`src/index.ts`） | cordis 服务 `gwbPdf2md`：收作业、秒回、后台跑全链、状态推进落账、重启对账、卸载打断。命令 `pdf2md.*` 也在这层登记 | [作业机](/docs/job-runner) |
-| **云端客户端**（`src/core/mineru.ts`） | MinerU v4 API 的三个动作：申请上传位、PUT 上传、轮询到终态。纯函数模块，不认识作业 | [云端客户端](/docs/mineru-client) |
+| **云端客户端**（`src/core/mineru.ts`） | MinerU v4 API 的三个动作：申请上传位、PUT 上传、轮询到终态（停滞与总上限判定、回包错误翻译也在这）。纯函数模块，不认识作业 | [云端客户端](/docs/mineru-client) |
 | **解包与语言**（`src/core/extract.ts`） | 下载结果 zip、原样解进 outDir、认出 markdown、判 zh/en。纯函数模块，不认识云端 | [解包与语言](/docs/extract) |
 
 依赖方向单向：作业机 → 云端客户端 → （网络）；作业机 → 解包。后两块互相不认识，都是作业机手里的工具。
@@ -28,9 +28,9 @@ queued → uploading → running → done | failed
    \───────── 重启或件卸载 ─────────→ interrupted
 ```
 
-1. `pdf2md.submit`（或消费方调 `gwbPdf2md.submit`）验绝对路径、验文件在、建 outDir、落账，**秒回作业号**——返回不是完成
-2. 后台：申请上传位 → PUT 上传 → 轮询（5 秒一问，上限 300 秒）→ 下载 zip 解进 outDir
-3. 每步推进都落账（gwbData，`jobs` 文档）；到达终态经内核 emit 通道推一条 `job-settled` 事件
+1. `pdf2md.submit`（或消费方调 `gwbPdf2md.submit`）验绝对路径、验文件在且不超 200MB、验 token 配了、建 outDir、落账，**秒回作业号**——返回不是完成
+2. 后台：申请上传位 → PUT 上传 → 轮询（5 秒一问；解析中页数 10 分钟不动判停滞，连排队总上限 1 小时）→ 下载 zip 解进 outDir
+3. 每步推进都落账（gwbData，`jobs` 文档），云端报的进度变了也落账；到达终态经内核 emit 通道推一条 `job-settled` 事件
 4. 宿主重启：上次留下的非终态作业标 `interrupted`——不丢账、不假装还在跑，也不自动重跑
 
 ## 盘上有什么
@@ -39,7 +39,7 @@ queued → uploading → running → done | failed
 | --- | --- |
 | `<outDir>/full.md` | 完整 markdown（名字以作业 `markdown` 字段为准，通常是 full.md） |
 | `<outDir>/images/…` | 正文引用的图，跟 md 同层的相对链接，不用改 |
-| `<home>/node_modules/@godcreator/gwb-mineru` | 件本体；进 home 手动 `pnpm add` + `cordis.yml` 条目 |
+| `<home>/node_modules/@godcreator/gwb-mineru` | 件本体；进 home 走 `plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`（条目 id `mineru`，设置节随它） |
 
 作业账经 gwbData 落在 home 的数据区（文档名 `jobs`），不是文件树的公开面。
 
@@ -49,6 +49,7 @@ queued → uploading → running → done | failed
 | --- | --- |
 | 门禁 | `pnpm build` + `pnpm typecheck`（仓根）；`pnpm exec docfirst check`（docs-site，单独跑） |
 | 文档站 dev | `pnpm dev`（docs-site 下），端口 4317 |
-| 本机 Verdaccio | `https://git.tianshen02.online:28377/api/packages/godcreator/npm/`，`@godcreator` scope 指向它（`.npmrc`） |
-| 凭据 | settings 节 `mineru`，键 `token`（secret），mineru.net 申请 |
+| 包源 | gitea 个人源 `https://git.tianshen02.online:28377/api/packages/godcreator/npm/`，`@godcreator` scope 路由住用户级 `~/.npmrc`，仓里不配 |
+| 凭据 | settings 节 `mineru`，键 `token`（secret），mineru.net 的 API 管理页创建 |
+| 实验材料 | 仓根 `probes/<时间戳>_<目的>/`，一次实验一个目录 |
 | 事件 | `source: "gwb-mineru"`、`type: "job-settled"`，载荷带 jobId / ok / outDir / error |

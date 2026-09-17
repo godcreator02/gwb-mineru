@@ -1,0 +1,45 @@
+---
+title: 0.2.0 对齐 MinerU 现行文档：超时看进度、进度记账、先认回包再认状态码
+born-at: 2026-09-17T22:26
+type: choice
+parent: [2026-09-08-gwb-mineru]
+label: 看进度判超时
+domain: 云端接口
+---
+
+## 背景
+
+人的原话：`更新mineru插件了该，看https://mineru.net/apiManage/docs，我等下注册个api`
+（上下文：论文那条线的转换半卡在没有 MinerU token，人要去注册一个新的；件自 0.1.0 起没对过云端文档。）
+
+对着现行文档逐条比，0.1.0 走的三步（`/file-urls/batch` 申请上传位 → PUT → `/extract-results/batch/{id}` 轮询）形状都没变，填上 token 本就能跑。变的是周边：批量结果在 `running` 时多了 `extract_progress`（已解析页 / 总页）；状态多了 `waiting-file` / `pending` / `converting`；单文件上限写明 200MB、200 页；每账号每天 1000 页最高优先级、超出降级；错误码表列了 token 错 A0202 / 过期 A0211、超大小 -60005、超页数 -60006、日任务数到顶 -60018；另有一套免 token 的 Agent 轻量 API（10MB / 20 页、只回 markdown 链接）。
+
+对照下来 0.1.0 有两处真坑。一是**轮询墙钟 300 秒**：200 页的文档、或者超额后降级排队，都会被判 failed，而件的纪律是失败不自动重试——调用方重提，同一份页数再扣一次额度。二是**token 错被吞**：先探了一次形状，坏 token 回的是 `HTTP 401` 加 JSON 正文 `{"msgCode":"A0211",...}`，键叫 `msgCode` 不叫 `code`，乱写的 token 也报 A0211 而不是 A0202；0.1.0 先看 `resp.ok`，只剩一句 `HTTP 401 Unauthorized`。另外 roadmap「更细的进度」与 not-doing「解析进度条」等的前提——云端给进度数据——到了。
+
+## 结论与边界
+
+人拍板范围（2026-09-17，回「ok」）：修两处坑、接进度、本地挡大小、language 改 ch，**不**开放转换参数。落地（commit `eaf1ee1`）：
+
+- **超时分两道**：云端在干活（`running` / `converting`）时，状态与已解析页数 10 分钟都不动判**停滞**；排队（`waiting-file` / `pending`）不判停滞，只受连排队在内 1 小时的**总上限**管。两种都结算 failed、err_msg 写明是哪一种并提醒云端可能还在跑。10 分钟与 1 小时是起手值，不是量出来的——真有长文档被误判或卡死干等，再按实数调
+- **进度只记账**：作业上加 `progress: { extractedPages, totalPages }`，云端报的页数变了才写盘，done 时补满；不推进度事件，云端细分状态不上作业账（仍是六态）
+- **回包先认正文再认状态码**：`code` / `msgCode` 非 0 抛 MineruError，A0202 / A0211 / -60005 / -60006 / -60018 附一句照着能做的话；认不出正文的非 2xx 才报 HTTP 错
+- submit 本地先挡 >200MB，token 检查挪到建 outDir 之前（查不过不留空目录）；language `en` 改云端缺省 `ch`；命令登记的 `plugin` 字段改包名（消掉每次挂载三条 warn）
+
+边界：转换参数（OCR、页码范围、模型）仍钉死，等调用方带需求来；停滞或超时后按 `batchId` 续取结果能省一份额度，但要加命令、碰重试那条边界，记进 roadmap 等疼了再做。
+
+## 否掉的候选
+
+**只把墙钟调大**（比如 30 分钟）——一行改完。否掉：卡死的作业要干等满时限才报；而实跑确认 vlm 模型下云端真给进度（6 页那篇中途看到 5/6），有数据就不该只看墙钟。
+
+**排队也判停滞**——一个数管全程。否掉：排队时页数天然不动，超过每日 1000 页降级之后排多久是云端配额的事，判停滞就是误杀，正好撞回要修的那个坑。
+
+**接 Agent 轻量 API 当没 token 时的兜底**。否掉：10MB / 20 页、只回一个 markdown 的 CDN 链接，图不落 `images/`，交出去的三样对不上；论文大多超限；人马上就有 token。云端 `callback` 同理不接——件只在本机跑，回调打不进来。
+
+**云端状态原样上作业账**（让人分得清「排队」与「在解析」）。否掉：作业六态是件的契约，搬上云端状态名等于把命令面变成云端 API 的镜像；「有没有 progress」已经分得出是否开始解析。
+
+## 依据
+
+- 回包形状：`probes/2609172223_api-error-shapes/runs/01-shapes.txt`——坏 token 三处一律 `401 + msgCode A0211`，不带鉴权 `401 text/plain login required`，真 token 查不存在的任务 `200 + code -60012`
+- 分支验证：`probes/2609172224_poll-and-live-run/runs/01-fake-poll.txt`——假 fetch 喂冻结产物，排队 8 轮不判停滞后 done、页数不动判停滞、一直排队判总上限、三种错误回包的翻译，六条全按设计
+- 实跑：同目录 `runs/02`–`05`——隔离 home `mineru-2609172219` 装开发版，坏 token 2 秒内 failed 带 A0211；中文 11 页约 24 秒 done（lang zh），英文 6 页约 16 秒 done（lang en），英文那篇中途抓到 `progress 5/6`；刚上传完的首轮轮询没有出现空 `extract_result`
+- 云端文档：https://mineru.net/apiManage/docs ，2026-09-17 读

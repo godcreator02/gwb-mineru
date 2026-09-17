@@ -13,8 +13,8 @@ MinerU 转换件：提供 **pdf2md 服务**（`ctx.gwbPdf2md`）——PDF 经 Mi
 「一个孤立 PDF 想要 markdown」的那扇门。
 
 * **作业模式**：`submit` 秒回作业号（命令是页面等着的一次调用，分钟级云端解析不能在线等）；
-  状态机 `queued→uploading→running→done|failed|interrupted`；作业账经 gwbData 落盘、
-  重启标 interrupted
+  状态机 `queued→uploading→running→done|failed|interrupted`；解析中带云端进度（已解析页 /
+  总页）；作业账经 gwbData 落盘、重启标 interrupted
 * **设置**：`mineru` 节一枚 `token`（secret）
 * **事件**：落定时经内核 emit 通道推界面一条 `job-settled`
 
@@ -29,8 +29,9 @@ pnpm build          # tsc 直出 dist/
 pnpm typecheck
 ```
 
-进 home：手动 `pnpm add @godcreator/gwb-mineru` + `cordis.yml` 写条目（包发本机
-registry `https://git.tianshen02.online:28377/api/packages/godcreator/npm/`）。用之前在设置里配 `mineru` 节的 `token`。
+进 home：`plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`（包发 gitea 个人源
+`https://git.tianshen02.online:28377/api/packages/godcreator/npm/`）。用之前在设置里配 `mineru` 节的
+`token`（mineru.net 的 API 管理页创建）。
 
 ## 文档
 
@@ -44,4 +45,4 @@ pnpm exec docfirst check    # 钉码门禁，单独跑
 
 [轨迹区](/trajectory)记方向了断，一卡一文件、只增不改、不钉码。这份 README 是生成物，
 正本是 `docs-site/content/outputs/readme.mdx`，改完在 `docs-site` 跑
-`pnpm exec docfirst render --target ai` 重摆，一起提交。
+`pnpm exec docfirst render` 重摆，一起提交。
