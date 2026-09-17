@@ -65,7 +65,7 @@ export interface Pdf2mdJob {
 export interface GwbPdf2mdApi {
   /**
    * 提交一个转换作业。验完文件与目录、落完账就返回——**返回不是完成**，
-   * 成败看 get(id) 的 state。
+   * 成败看 get(id) 的 state。作业一个接一个跑，前面还有作业时这条先是 queued。
    */
   submit(input: string, outDir: string): Promise<Pdf2mdJob>
   /** 查一条。没有这个 id 回 undefined */
@@ -86,6 +86,16 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
+/** 错误连同 cause 一起说：fetch 失败时真原因（ECONNRESET、连接超时之类）只在 cause 里 */
+function describeError(err: unknown): string {
+  if (!(err instanceof Error) || err.cause === undefined) return String(err)
+  const cause = err.cause
+  if (!(cause instanceof Error)) return `${String(err)}（${String(cause)}）`
+  const code = (cause as { code?: unknown }).code
+  const withCode = typeof code === 'string' && !cause.message.includes(code) ? `${cause.message} ${code}` : cause.message
+  return `${String(err)}（${withCode}）`
+}
+
 export default class GwbMineru extends Service implements GwbPdf2mdApi {
   /** settings / data / commands 三个硬依赖缺谁不挂 */
   static inject = ['gwbCommands', 'gwbSettings', 'gwbData']
@@ -101,6 +111,10 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
   private readonly table = new Map<string, Pdf2mdJob>()
   private readonly controllers = new Map<string, AbortController>()
   private jobSeq = 0
+  /** 作业一个接一个跑：新作业挂到这条链的尾上 */
+  private lane: Promise<void> = Promise.resolve()
+  /** 作业账写盘也一个接一个：同一个文件并发 rename，Windows 上会 EPERM */
+  private saving: Promise<void> = Promise.resolve()
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbPdf2md')
@@ -124,7 +138,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     if (cli === undefined) return
     this.own.effect(() =>
       cli.register(
-        { name: 'pdf2md.submit', description: '提交 PDF 转 markdown 作业：{ input, outDir }。秒回作业号，成败看 pdf2md.status', plugin: PACKAGE_NAME },
+        { name: 'pdf2md.submit', description: '提交 PDF 转 markdown 作业：{ input, outDir }。秒回作业号；作业一个接一个跑，成败看 pdf2md.status', plugin: PACKAGE_NAME },
         async (args) => {
           const raw = isRecord(args) ? args : {}
           const input = raw['input']
@@ -178,11 +192,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     this.table.set(id, job)
     this.info(`作业 ${id} 排队：${path.basename(input)} → ${outDir}`)
     void this.persist()
-    void this.run(job, token).catch((err: unknown) => {
-      // run 自己管状态收尾，这里只兜「run 自己炸了」的那种没人接的异常
-      this.warn(`作业 ${id} 的执行链炸了：${String(err)}`)
-      void this.finish(id, 'failed', undefined, String(err))
-    })
+    this.lane = this.lane.then(() => this.runQueued(id)).catch(() => undefined)
     return job
   }
 
@@ -198,6 +208,22 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
   private token(): string | undefined {
     const value = this.own.gwbSettings?.get('token')
     return typeof value === 'string' && value.trim() !== '' ? value : undefined
+  }
+
+  /** 轮到这条作业：已被打断（件卸载）就跳过；token 现取，排队期间换过就用新的 */
+  private async runQueued(id: string): Promise<void> {
+    const job = this.table.get(id)
+    if (job?.state !== 'queued') return
+    const token = this.token()
+    if (token === undefined) {
+      await this.finish(id, 'failed', undefined, 'MinerU token 在排队期间被清掉了')
+      return
+    }
+    await this.run(job, token).catch(async (err: unknown) => {
+      // run 自己管状态收尾，这里只兜「run 自己炸了」的那种没人接的异常
+      this.warn(`作业 ${id} 的执行链炸了：${describeError(err)}`)
+      await this.finish(id, 'failed', undefined, describeError(err))
+    })
   }
 
   /** 后台全链：申请上传位 → 上传 → 轮询 → 下载解包。每步落账，终态推 UI 事件 */
@@ -269,13 +295,16 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     }
   }
 
-  /** 作业账落盘 */
-  private async persist(): Promise<void> {
-    try {
-      await this.own.gwbData?.writeDoc(JOBS_DOC, { jobs: this.list() })
-    } catch (err: unknown) {
-      this.warn(`作业账落盘失败（继续在内存里跑）：${String(err)}`)
-    }
+  /** 作业账落盘，排队写：每次写的是轮到那一刻的整张账 */
+  private persist(): Promise<void> {
+    this.saving = this.saving.then(async () => {
+      try {
+        await this.own.gwbData?.writeDoc(JOBS_DOC, { jobs: this.list() })
+      } catch (err: unknown) {
+        this.warn(`作业账落盘失败（继续在内存里跑）：${String(err)}`)
+      }
+    })
+    return this.saving
   }
 
   /** 启动对账：把上次留下的非终态作业标 interrupted */
