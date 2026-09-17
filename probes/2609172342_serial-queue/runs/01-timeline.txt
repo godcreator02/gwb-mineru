@@ -1,0 +1,40 @@
+# 2026-09-17T15:39:51.356Z  交了 3 个作业：20260917153951-1 20260917153951-2 20260917153951-3  输入 D:\unitfolders\26091718wvg\papers\10.1109_ecce-europe62795.2025.11238867\paper.pdf
+# 每行：采样时刻 | 各作业状态 | 同时在跑（非 queued 非终态）的个数
+2026-09-17T15:39:51.481Z | uploading queued queued | 1
+2026-09-17T15:39:52.617Z | uploading queued queued | 1
+2026-09-17T15:39:53.750Z | running queued queued | 1
+2026-09-17T15:39:54.882Z | running queued queued | 1
+2026-09-17T15:39:56.035Z | running queued queued | 1
+2026-09-17T15:39:57.181Z | running queued queued | 1
+2026-09-17T15:39:58.345Z | running queued queued | 1
+2026-09-17T15:39:59.487Z | running queued queued | 1
+2026-09-17T15:40:00.613Z | running queued queued | 1
+2026-09-17T15:40:01.747Z | running queued queued | 1
+2026-09-17T15:40:02.886Z | running queued queued | 1
+2026-09-17T15:40:04.031Z | running queued queued | 1
+2026-09-17T15:40:05.157Z | done uploading queued | 1
+2026-09-17T15:40:06.288Z | done running queued | 1
+2026-09-17T15:40:07.416Z | done running queued | 1
+2026-09-17T15:40:08.742Z | done running queued | 1
+2026-09-17T15:40:09.866Z | done running queued | 1
+2026-09-17T15:40:10.988Z | done running queued | 1
+2026-09-17T15:40:12.130Z | done running queued | 1
+2026-09-17T15:40:13.256Z | done running queued | 1
+2026-09-17T15:40:14.391Z | done running queued | 1
+2026-09-17T15:40:15.531Z | done running queued | 1
+2026-09-17T15:40:16.652Z | done running queued | 1
+2026-09-17T15:40:17.780Z | done running queued | 1
+2026-09-17T15:40:19.082Z | done running queued | 1
+2026-09-17T15:40:20.218Z | done done uploading | 1
+2026-09-17T15:40:21.347Z | done done uploading | 1
+2026-09-17T15:40:22.486Z | done done running | 1
+2026-09-17T15:40:23.613Z | done done running | 1
+2026-09-17T15:40:24.744Z | done done running | 1
+2026-09-17T15:40:25.874Z | done done running | 1
+2026-09-17T15:40:27.007Z | done done running | 1
+2026-09-17T15:40:28.128Z | done done running | 1
+2026-09-17T15:40:29.261Z | done done running | 1
+2026-09-17T15:40:30.390Z | done done running | 1
+2026-09-17T15:40:31.517Z | done done running | 1
+2026-09-17T15:40:32.650Z | done done done | 0
+# 最多同时在跑：1

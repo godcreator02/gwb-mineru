@@ -17,8 +17,9 @@ description: 到哪了、在等什么——「在等什么」那一栏是重点
 | 2026-09-08 16:29 | 更名 | `gwb-pdf2md` → `gwb-mineru`（引擎命名），服务与命令保持 `pdf2md`（功能命名）；曾用包名废弃（commit `3110bfe`，见[那张卡](/trajectory/2026-09-08-engine-vs-function-naming)） |
 | 2026-09-09 02:03 | 迁 0.1 | 依赖换到单进程内核那批：`gwb-plugin-api` peer 提到 `>=0.1.0`，五条 dev 钉 0.1.0。这个件没有浏览器半、契约变的那几处一处都没用到，代码只动了 fd3 那句注释——判据本身不变（commit `64b1b91`） |
 | 2026-09-17 22:23 | 0.2.0 对齐现行文档 | 超时从墙钟 300s 改看进度（停滞 10 分钟 / 总上限 1 小时，排队不判停滞）、作业账记云端进度、回包先认 `code`/`msgCode` 再认状态码（token 错是 401）、本地挡 200MB、language 改 ch；隔离 home 中英文两篇真论文跑通（commit `eaf1ee1`，见[那张卡](/trajectory/2026-09-17-poll-by-progress)） |
+| 2026-09-17 23:40 | 0.3.0 作业串行 | paper-fetch 同时交 5 篇、4 篇同一秒 `fetch failed`，逐篇重交全过——人拍板改串行：作业挂链一个接一个跑，作业账写盘也排队（并发 rename 撞过 EPERM），失败原因带 cause（commit `7c0bc70`，见[那张卡](/trajectory/2026-09-17-serial-jobs)） |
 
-0.2.0 在 gitea 个人源上，进 home 走 `plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`。
+0.3.0 在 gitea 个人源上，进 home 走 `plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`。
 
 ## 在等前提
 

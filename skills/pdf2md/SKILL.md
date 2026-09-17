@@ -1,6 +1,6 @@
 ---
 name: pdf2md
-description: 要把一个 PDF 文件原样转成 markdown 时读。submit 秒回作业号、成败看 status，讲清轮询节奏与进度、token 缺席与失效会怎么挡、产出落在哪。论文库那套入库/升级不在这篇——那是 papers 的事。
+description: 要把一个 PDF 文件原样转成 markdown 时读。submit 秒回作业号、作业串行排队、成败看 status，讲清轮询节奏与进度、token 缺席与失效会怎么挡、产出落在哪。论文的转换与翻译不走这篇——那是 paper-fetch 的事。
 ---
 
 # PDF 转 markdown（MinerU 作业机）
@@ -16,10 +16,12 @@ description: 要把一个 PDF 文件原样转成 markdown 时读。submit 秒回
 
 1. **提交**：`pdf2md.submit { "input": "D:/…/xxx.pdf", "outDir": "D:/…/out" }`
    ——两个都得是绝对路径，PDF 不超过 200MB。**秒回作业号，返回 ≠ 完成**。
+   一批可以一口气全交：**作业串行**，一次只跑一个，其余停在 `queued` 等着——别自己排队，
+   也别并发去催
 2. **轮询**：`pdf2md.status { "id": "<作业号>" }`。状态机
    `queued → uploading → running → done | failed | interrupted`。`running` 时带
    `progress: { extractedPages, totalPages }`（云端排队时还没有）。十页上下的论文通常半分钟内
-   done，问的间隔 5–10 秒就够；终态后别再问。
+   done（排在后面的要加上前面的时间），问的间隔 5–10 秒就够；终态后别再问。
 3. **看全部**：`pdf2md.jobs {}`。
 
 done 的作业带三样：`markdown`（outDir 里那份完整 markdown 的文件名，通常是
@@ -36,8 +38,8 @@ done 的作业带三样：`markdown`（outDir 里那份完整 markdown 的文件
 - **`interrupted`**：宿主重启或件卸载把作业打断了——MinerU 侧可能其实做完了，但结果
   没人取。重提一次作业就是了（同一个 PDF 再 submit 一遍）。
 - **失败原因看 `error`**：上传失败、解析失败、云端停滞（解析中页数 10 分钟不动）或超时
-  （连排队 1 小时）、超 200 页、当天任务数到顶、zip 结构不对，都在那一格，日志里也有同一句。
-  认得出的云端错误码后面附着照着就能做的话
+  （连云端排队 1 小时）、超 200 页、当天任务数到顶、zip 结构不对，都在那一格，日志里也有同一句。
+  认得出的云端错误码后面附着照着就能做的话；`fetch failed` 括号里是网络层的真原因
 
 ## 界面通知
 
@@ -46,5 +48,5 @@ done 的作业带三样：`markdown`（outDir 里那份完整 markdown 的文件
 
 ## 论文库不走这篇
 
-把论文 PDF 入库、转换后规格化/翻译，是 papers 件那条链（它自己在代码里调
-`gwbPdf2md` 服务）。这篇只管「一个孤立 PDF 想要 markdown」。
+论文的转换与翻译走 gwb-paper-fetch 那条链（`paper-fetch.convert`，它自己在代码里调
+`gwbPdf2md` 服务，产物进论文库）。这篇只管「一个孤立 PDF 想要 markdown」。

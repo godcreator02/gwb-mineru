@@ -1,0 +1,6 @@
+2026-09-17T15:39:51.100Z info gwb-mineru 作业 20260917153951-1 排队：paper.pdf → C:\Users\GODAME~1\AppData\Local\Temp\mineru-serial-DHLaFS\job1
+2026-09-17T15:39:51.219Z info gwb-mineru 作业 20260917153951-2 排队：paper.pdf → C:\Users\GODAME~1\AppData\Local\Temp\mineru-serial-DHLaFS\job2
+2026-09-17T15:39:51.334Z info gwb-mineru 作业 20260917153951-3 排队：paper.pdf → C:\Users\GODAME~1\AppData\Local\Temp\mineru-serial-DHLaFS\job3
+2026-09-17T15:40:04.200Z info gwb-mineru 作业 20260917153951-1 转换完成：full.md（en，18 个文件）
+2026-09-17T15:40:19.522Z info gwb-mineru 作业 20260917153951-2 转换完成：full.md（en，18 个文件）
+2026-09-17T15:40:31.705Z info gwb-mineru 作业 20260917153951-3 转换完成：full.md（en，18 个文件）

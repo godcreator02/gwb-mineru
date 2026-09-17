@@ -15,6 +15,7 @@ description: 这个件造的词、gwb 线的词在这儿有特定含义的——
 | **作业机** | 这个件的形态：`submit` 秒回作业号、后台跑全链、终态事件。对应 `src/index.ts` 的服务，见[作业机](/docs/job-runner) |
 | **作业** | 一次 PDF → markdown 转换的账（`Pdf2mdJob`）：输入、输出目录、状态、成败原因、产出三样。落盘就是它 |
 | **状态机六态** | `queued → uploading → running → done \| failed \| interrupted`；后三个是终态，到任一不再变化 |
+| **串行 / 排队** | 作业一个接一个跑：前一个到终态才轮到下一个，没轮到的停在 `queued`。见[作业机](/docs/job-runner) |
 | **作业账** | 作业记录的落盘副本，经 gwbData 存进文档 `jobs`。重启后靠它对账 |
 | **进度**（`progress`） | 云端解析中报来的已解析页 / 总页，记在作业上；排队时没有，done 时补满。只记账，不推事件 |
 | **停滞** | 云端在解析（running / converting）而状态与已解析页数一段时间都不动——作业按 failed 结算。排队不算停滞，只受总上限管。见[云端客户端](/docs/mineru-client) |

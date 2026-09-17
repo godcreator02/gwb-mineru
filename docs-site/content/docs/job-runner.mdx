@@ -1,25 +1,25 @@
 ---
 title: 作业机：gwbPdf2md 服务
-description: src/index.ts——submit 秒回、后台全链、作业账落盘、重启对账；命令与事件的脸也在这层
+description: src/index.ts——submit 秒回、作业串行排队跑全链、作业账排队落盘、重启对账；命令与事件的脸也在这层
 ---
 
 # 作业机：gwbPdf2md 服务
 
-**本页回答**：`src/index.ts` 管什么、不管什么；作业的状态怎么推进、账怎么落；三个邻居服务
-为什么是硬依赖。
+**本页回答**：`src/index.ts` 管什么、不管什么；作业的状态怎么推进、为什么一个接一个跑、账怎么落；
+三个邻居服务为什么是硬依赖。
 
 ## 管什么
 
-作业的一生：验参落账秒回、后台跑全链（申请上传位 → 上传 → 轮询 → 解包）、每步推进落账、
-云端进度变了记账、终态推 UI 事件、启动对账、卸载打断。命令面 `pdf2md.*` 三条与说明书注册也在这层。
+作业的一生：验参落账秒回、排队等前面的作业跑完、后台跑全链（申请上传位 → 上传 → 轮询 → 解包）、
+每步推进落账、云端进度变了记账、终态推 UI 事件、启动对账、卸载打断。命令面 `pdf2md.*` 三条与说明书注册也在这层。
 
 ## 不知道什么
 
 - 不知道 MinerU API 长什么样——三个动作在 [云端客户端](/docs/mineru-client)
 - 不知道 zip 里有什么、markdown 怎么认——在 [解包与语言](/docs/extract)
-- 不知道调用方拿产出干什么——零库概念，「归档副本、成品位命名」那套篇目录布局是 papers 的
+- 不知道调用方拿产出干什么——零库概念，「归档副本、成品位命名」那套篇目录布局是调用方的
   私有约定，不在这儿
-- 不知道 token 的值——settings 给，现取现读
+- 不知道 token 的值——settings 给，轮到作业开跑时现取
 
 ## 数据结构
 
@@ -28,8 +28,8 @@ description: src/index.ts——submit 秒回、后台全链、作业账落盘、
 {/* ref file="../src/index.ts" lines="44-62" */}
 
 `state` 六态：`queued → uploading → running → done | failed | interrupted`，后三态是终态。
-`queued` 是瞬态——submit 落完账立刻开跑。`progress` 是云端报来的已解析页 / 总页，`running`
-期间才会出现，done 时补满；云端排队时没有它。
+`queued` 是真排队态——前面还有作业在跑，这条就一直等着。`progress` 是云端报来的已解析页 / 总页，
+`running` 期间才会出现，done 时补满；云端排队时没有它。
 
 ## 提供的接口
 
@@ -52,28 +52,29 @@ description: src/index.ts——submit 秒回、后台全链、作业账落盘、
 引用跨不到消费者扩展，所以用的时候一律 `this.own.<服务>` 现取（那晚的修理与翻案见
 [那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）：
 
-{/* ref file="../src/index.ts" lines="89-97" */}
+{/* ref file="../src/index.ts" lines="99-107" */}
 
 skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 
-{/* ref file="../src/index.ts" lines="155-158" */}
+{/* ref file="../src/index.ts" lines="169-172" */}
 
 ## 怎么单独测
 
 仓里没有单测设施，现状两条：`pnpm typecheck` 守类型；真链路进隔离 home 实跑（要真 token、
 真云端——`devkit.home.new` 开 home、`plugin-manager.install` 装件、`devkit.dev` 换开发版、
-`settings.set` 填 token，一趟实跑的完整记录在 `probes/2609172224_poll-and-live-run/`）。
+`settings.set` 填 token）。实跑记录：全链与进度在 `probes/2609172224_poll-and-live-run/`，
+串行排队在 `probes/2609172342_serial-queue/`（同时交 3 个作业、每秒抽一次作业账）。
 能单测的两块被刻意切在服务外面——云端客户端与解包都是纯函数模块，不欠 cordis，
 这正是依赖方向单向的回报。
 
 ## 代码地图
 
 - **在哪**：`src/index.ts`，一个文件
-- **先读**：文件头注释（14–32 行，自我介绍）→ `submit`（165 行）→ `run`（204 行）
-- **读序**：`[Service.init]`（登记命令与设置、启动对账）→ `submit`（验参落账秒回）→
-  `run`（后台全链）→ `noteProgress`（进度记账）→ `finish`（状态推进 + 终态 emit）→
-  `persist` / `load`（账的写与对账）
-- **可跳过**：`dist/`（tsc 产物）
+- **先读**：文件头注释（14–32 行，自我介绍）→ `submit`（179 行）→ `runQueued`（214 行）→ `run`（230 行）
+- **读序**：`[Service.init]`（登记命令与设置、启动对账）→ `submit`（验参落账秒回、挂上排队链）→
+  `runQueued`（轮到时核状态、取 token）→ `run`（后台全链）→ `noteProgress`（进度记账）→
+  `finish`（状态推进 + 终态 emit）→ `persist` / `load`（账的排队写与对账）
+- **可跳过**：`dist/`（tsc 产物）、`describeError`（把 `cause` 拼进失败原因的几行）
 
 ## 设计点（错了难改的那几条）
 
@@ -82,22 +83,43 @@ skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 
 {/* ref file="../src/index.ts" lines="15-21" */}
 
+**作业一个接一个跑**：新作业挂到一条 promise 链的尾上，前一个到终态才轮到下一个；轮到时这条
+已经不是 `queued`（件卸载时被标了 `interrupted`）就跳过，token 在那一刻现取。并发交进来的作业
+在云端那头同一秒一起 `fetch failed` 过，逐个交则全过——判据与实跑见
+[那张卡](/trajectory/2026-09-17-serial-jobs)：
+
+{/* ref file="../src/index.ts" lines="193-196" */}
+
+{/* ref file="../src/index.ts" lines="213-227" */}
+
+**作业账写盘也排队**：进度、状态推进、新作业入账都会触发写盘，同一个 `jobs` 文档并发 rename
+在 Windows 上 `EPERM` / `ENOENT`。写盘挂到另一条链上，每次写轮到那一刻的整张账：
+
+{/* ref file="../src/index.ts" lines="298-308" */}
+
+**失败原因带上 cause**：`fetch` 失败时 `String(err)` 只有一句 `TypeError: fetch failed`，
+真原因（`ECONNRESET`、连接超时）在 `err.cause` 里——拼进作业的 `error` 与日志：
+
+{/* ref file="../src/index.ts" lines="89-97" */}
+
 **作业的命脉挂提供方，不挂消费者**：方法里的 `this.ctx` 是消费者的——定时器、落账、收尾
-全挂 `this.own`，消费者卸载不该带走一个还在跑的转换（上面 84–92 那段钉过）。
+全挂 `this.own`，消费者卸载不该带走一个还在跑的转换（上面「依赖的接口」那段钉过）。
 
-**启动对账与卸载打断，只标不重跑**：重启后上次留下的非终态作业标 `interrupted`（理由写进
-error），件卸载时 abort 还在跑的控制器再标一遍——不丢账、不假装还在跑，也**不**自动重提：
+**启动对账与卸载打断，只标不重跑**：重启后上次留下的非终态作业（含还在排队的）标 `interrupted`
+（理由写进 error），件卸载时 abort 还在跑的控制器、把排队中的一并标上——不丢账、不假装还在跑，
+也**不**自动重提：
 
-{/* ref file="../src/index.ts" lines="281-303" */}
+{/* ref file="../src/index.ts" lines="310-332" */}
 
 **进度只记账，不推事件**：轮询每 5 秒一问，云端报的页数变了才写盘，没变不写；界面事件仍只有
 落定那一条 `job-settled`——看进度的人查 status，件不把每一轮回包转发成事件：
 
-{/* ref file="../src/index.ts" lines="241-250" */}
+{/* ref file="../src/index.ts" lines="267-276" */}
 
 **轮询的三个数定在这层**：5 秒一问、云端干活时进度停滞 10 分钟判失败、连排队在内总上限
 1 小时。怎么判停滞在[云端客户端](/docs/mineru-client)；数值是作业机的取舍——长文档与低优先级
-排队不该被墙钟误杀（误杀的代价是调用方重提、同一份页数再扣一次额度），卡死的也不该无限等：
+排队不该被墙钟误杀（误杀的代价是调用方重提、同一份页数再扣一次额度），卡死的也不该无限等。
+总上限从作业开始轮询算起，本地排队等前面作业的时间不算在内：
 
 {/* ref file="../src/index.ts" lines="39-42" */}
 
