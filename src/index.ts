@@ -53,8 +53,6 @@ export interface Pdf2mdJob {
   readonly updatedAt: string
   readonly error?: string
   readonly batchId?: string
-  /** 上传已落到云端——续取的凭据：有它 resume 才跳过申请位与上传，不重花额度 */
-  readonly uploaded?: true
   /** 云端报来的解析进度（running 时才有；done 时补满） */
   readonly progress?: { readonly extractedPages: number; readonly totalPages: number }
   /** 转换成功后交出的三样 */
@@ -63,19 +61,20 @@ export interface Pdf2mdJob {
   readonly files?: readonly string[]
 }
 
+/** 一次提交里的一条：一个 PDF 进、一个 outDir 出 */
+export interface Pdf2mdSubmitInput {
+  readonly input: string
+  readonly outDir: string
+}
+
 /** 消费方拿到的那一格。写 `inject: ['gwbPdf2md']` 才有 */
 export interface GwbPdf2mdApi {
   /**
-   * 提交一个转换作业。验完文件与目录、落完账就返回——**返回不是完成**，
-   * 成败看 get(id) 的 state。作业一个接一个跑，前面还有作业时这条先是 queued。
+   * 提交一批转换作业（一作业一文件）。验完全部文件与目录、落完账才返回——**返回不是完成**，
+   * 成败看 get(id) 的 state。作业各自独立、**同时开跑**（云端各转各的，谁先完谁先落）。
+   * 传半个坏形状进来是整批拒，不落半批账
    */
-  submit(input: string, outDir: string): Promise<Pdf2mdJob>
-  /**
-   * 续取一条 failed / interrupted 的作业：**不重新申请位、不上传、不重花解析额度**——
-   * 凭作业账上的 batchId 重新入列，轮到时从云端轮询接着跑。云端已 done 的直接下载落盘
-   * 翻 done；云端任务已过期（结果留存有时限）会结算回 failed，那时只能重新 submit
-   */
-  resume(id: string): Pdf2mdJob
+  submit(files: readonly Pdf2mdSubmitInput[]): Promise<Pdf2mdJob[]>
   /** 查一条。没有这个 id 回 undefined */
   get(id: string): Pdf2mdJob | undefined
   /** 此刻账上的全部作业，新的在前 */
@@ -119,9 +118,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
   private readonly table = new Map<string, Pdf2mdJob>()
   private readonly controllers = new Map<string, AbortController>()
   private jobSeq = 0
-  /** 作业一个接一个跑：新作业挂到这条链的尾上 */
-  private lane: Promise<void> = Promise.resolve()
-  /** 作业账写盘也一个接一个：同一个文件并发 rename，Windows 上会 EPERM */
+  /** 作业账写盘一个接一个：同一个文件并发 rename，Windows 上会 EPERM */
   private saving: Promise<void> = Promise.resolve()
 
   constructor(ctx: GwbContext) {
@@ -146,25 +143,19 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     if (cli === undefined) return
     this.own.effect(() =>
       cli.register(
-        { name: 'pdf2md.submit', description: '提交 PDF 转 markdown 作业：{ input, outDir }。秒回作业号；作业一个接一个跑，成败看 pdf2md.status', plugin: PACKAGE_NAME },
+        { name: 'pdf2md.submit', description: '提交一批 PDF 转 markdown 作业：{ files: [{ input, outDir }, …] }。秒回作业号数组；作业各自独立同时跑，成败看 pdf2md.status', plugin: PACKAGE_NAME },
         async (args) => {
           const raw = isRecord(args) ? args : {}
-          const input = raw['input']
-          const outDir = raw['outDir']
-          if (typeof input !== 'string' || input === '') throw new Error('pdf2md.submit 要 { input: 绝对路径 }')
-          if (typeof outDir !== 'string' || outDir === '') throw new Error('pdf2md.submit 要 { outDir: 绝对路径 }')
-          return this.submit(input, outDir)
-        },
-      ),
-    )
-    this.own.effect(() =>
-      cli.register(
-        { name: 'pdf2md.resume', description: '续取一条 failed / interrupted 的作业：{ id }。凭账上 batchId 从云端轮询接着跑，不重花额度；云端已过期则结算回 failed', plugin: PACKAGE_NAME },
-        (args) => {
-          const raw = isRecord(args) ? args : {}
-          const id = raw['id']
-          if (typeof id !== 'string' || id === '') throw new Error('pdf2md.resume 要 { id: string }')
-          return this.resume(id)
+          const files = raw['files']
+          if (!Array.isArray(files) || files.length === 0) throw new Error('pdf2md.submit 要 { files: [{ input, outDir }, …] } 非空数组')
+          const parsed: Pdf2mdSubmitInput[] = []
+          for (const one of files) {
+            if (!isRecord(one) || typeof one['input'] !== 'string' || typeof one['outDir'] !== 'string') {
+              throw new Error('files 里每一项都得是 { input, outDir }（绝对路径）')
+            }
+            parsed.push({ input: one['input'], outDir: one['outDir'] })
+          }
+          return this.submit(parsed)
         },
       ),
     )
@@ -195,47 +186,34 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     this.info('mineru 作业机就绪（ctx.gwbPdf2md，件 gwb-mineru）')
   }
 
-  async submit(input: string, outDir: string): Promise<Pdf2mdJob> {
-    if (!path.isAbsolute(input)) throw new Error(`input 得是绝对路径：${input}`)
-    if (!path.isAbsolute(outDir)) throw new Error(`outDir 得是绝对路径：${outDir}`)
-    const fileStat = await stat(input).catch(() => undefined)
-    if (fileStat === undefined || !fileStat.isFile()) throw new Error(`input 不是个能读的文件：${input}`)
-    if (fileStat.size > MAX_FILE_BYTES) throw new Error(`input 超过 MinerU 单文件上限 200MB，拆小了再提：${input}`)
+  /**
+   * 提交一批转换作业。验完全部、落完账才返回——**返回不是完成**，作业各自独立、同时开跑。
+   * 传坏形状（路径不是绝对、文件不存在、超 200MB、token 没配）整批当场拒，不落半批账
+   */
+  async submit(files: readonly Pdf2mdSubmitInput[]): Promise<Pdf2mdJob[]> {
+    if (!Array.isArray(files) || files.length === 0) throw new Error('submit 要 files: [{ input, outDir }, …] 非空数组')
     const token = this.token()
     if (token === undefined) throw new Error('MinerU token 没配——先在设置里填，或 settings.set { section: "mineru", key: "token", value: "…" }')
-    await mkdir(outDir, { recursive: true })
+    for (const one of files) {
+      if (!path.isAbsolute(one.input)) throw new Error(`input 得是绝对路径：${one.input}`)
+      if (!path.isAbsolute(one.outDir)) throw new Error(`outDir 得是绝对路径：${one.outDir}`)
+      const fileStat = await stat(one.input).catch(() => undefined)
+      if (fileStat === undefined || !fileStat.isFile()) throw new Error(`input 不是个能读的文件：${one.input}`)
+      if (fileStat.size > MAX_FILE_BYTES) throw new Error(`input 超过 MinerU 单文件上限 200MB，拆小了再提：${one.input}`)
+    }
+    await Promise.all([...new Set(files.map((f) => f.outDir))].map((outDir) => mkdir(outDir, { recursive: true })))
 
-    const id = `${nowIso().replaceAll(/[-:TZ.]/g, '').slice(0, 14)}-${String(++this.jobSeq)}`
     const at = nowIso()
-    const job: Pdf2mdJob = { id, input, outDir, state: 'queued', createdAt: at, updatedAt: at }
-    this.table.set(id, job)
-    this.info(`作业 ${id} 排队：${path.basename(input)} → ${outDir}`)
+    const jobs = files.map((one) => {
+      const id = `${at.replaceAll(/[-:TZ.]/g, '').slice(0, 14)}-${String(++this.jobSeq)}`
+      const job: Pdf2mdJob = { id, input: one.input, outDir: one.outDir, state: 'queued', createdAt: at, updatedAt: at }
+      this.table.set(id, job)
+      this.info(`作业 ${id} 入列：${path.basename(one.input)} → ${one.outDir}`)
+      return job
+    })
     void this.persist()
-    this.lane = this.lane.then(() => this.runQueued(id)).catch(() => undefined)
-    return job
-  }
-
-  /**
-   * 续取一条 failed / interrupted 的作业：凭账上 batchId 重新入列，轮到时从云端轮询
-   * 接着跑。秒回翻回 `queued` 的账。不重新申请位、不上传——**不重花解析额度**，这与
-   * 「失败不自动重试」不矛盾：重试是再花一次额度替调用方做决定，续取是把已花的那次
-   * 取回来，喊不喊仍归调用方
-   */
-  resume(id: string): Pdf2mdJob {
-    const job = this.table.get(id)
-    if (job === undefined) throw new Error(`没有这个作业：${id}`)
-    if (job.state !== 'failed' && job.state !== 'interrupted') {
-      throw new Error(`只有 failed / interrupted 的作业能续取，这条是 ${job.state}`)
-    }
-    if (job.batchId === undefined || job.uploaded !== true) {
-      throw new Error('这条作业没走到上传完成，云端没有它的文件，续取不了——重新 pdf2md.submit 一次就是了')
-    }
-    const next: Pdf2mdJob = { ...job, state: 'queued', progress: undefined, error: undefined, updatedAt: nowIso() }
-    this.table.set(id, next)
-    this.info(`作业 ${id} 续取入列：凭账上 batchId 接着轮询，不重花额度`)
-    void this.persist()
-    this.lane = this.lane.then(() => this.runQueued(id)).catch(() => undefined)
-    return next
+    for (const job of jobs) this.start(job, token)
+    return jobs
   }
 
   get(id: string): Pdf2mdJob | undefined {
@@ -252,25 +230,16 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     return typeof value === 'string' && value.trim() !== '' ? value : undefined
   }
 
-  /** 轮到这条作业：已被打断（件卸载）就跳过；token 现取，排队期间换过就用新的。
-   * 上传已落定的（resume 回来的）走半链，跳过申请位与上传 */
-  private async runQueued(id: string): Promise<void> {
-    const job = this.table.get(id)
-    if (job?.state !== 'queued') return
-    const token = this.token()
-    if (token === undefined) {
-      await this.finish(id, 'failed', undefined, 'MinerU token 在排队期间被清掉了')
-      return
-    }
-    const half = job.uploaded === true && job.batchId !== undefined
-    await (half ? this.runResumed(job, token) : this.run(job, token)).catch(async (err: unknown) => {
+  /** 一条作业的全链：报名 → 上传 → 轮询 → 下载解包，每步落账，终态推 UI 事件。
+   * 作业各跑各的、互不排队——云端本来就是一个任务一个任务地转 */
+  private start(job: Pdf2mdJob, token: string): void {
+    void this.run(job, token).catch(async (err: unknown) => {
       // run 自己管状态收尾，这里只兜「run 自己炸了」的那种没人接的异常
-      this.warn(`作业 ${id} 的执行链炸了：${describeError(err)}`)
-      await this.finish(id, 'failed', undefined, describeError(err))
+      this.warn(`作业 ${job.id} 的执行链炸了：${describeError(err)}`)
+      await this.finish(job.id, 'failed', undefined, describeError(err))
     })
   }
 
-  /** 后台全链：申请上传位 → 上传 → 轮询 → 下载解包。每步落账，终态推 UI 事件 */
   private async run(job: Pdf2mdJob, token: string): Promise<void> {
     const controller = new AbortController()
     this.controllers.set(job.id, controller)
@@ -281,51 +250,31 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
       await this.finish(job.id, 'uploading', { batchId })
       await upload(uploadUrl, job.input)
 
-      // uploaded 是续取的凭据：走到这一格说明云端已有文件，resume 才敢跳过前两步
-      await this.finish(job.id, 'running', { uploaded: true })
-      await this.settleByPoll(job.id, token, controller.signal)
-    } finally {
-      this.controllers.delete(job.id)
-    }
-  }
-
-  /** 续取的半链：云端已有文件（uploaded），直接从轮询接着跑到终态 */
-  private async runResumed(job: Pdf2mdJob, token: string): Promise<void> {
-    const controller = new AbortController()
-    this.controllers.set(job.id, controller)
-    try {
       await this.finish(job.id, 'running')
-      await this.settleByPoll(job.id, token, controller.signal)
+      const result: FileResult = await poll(token, batchId, {
+        interval: POLL_INTERVAL_S,
+        stallTimeout: POLL_STALL_S,
+        timeout: POLL_TIMEOUT_S,
+        onProgress: (pending) => this.noteProgress(job.id, pending),
+        signal: controller.signal,
+      })
+      if (!isDone(result)) {
+        await this.finish(job.id, 'failed', undefined, result.err_msg ?? `解析状态 ${result.state}`)
+        return
+      }
+
+      const extracted = await downloadExtract(result.full_zip_url ?? '', job.outDir)
+      const seen = this.get(job.id)?.progress
+      await this.finish(job.id, 'done', {
+        markdown: extracted.markdown,
+        lang: extracted.lang,
+        files: [...extracted.files],
+        ...(seen !== undefined ? { progress: { extractedPages: seen.totalPages, totalPages: seen.totalPages } } : {}),
+      })
+      this.info(`作业 ${job.id} 转换完成：${extracted.markdown}（${extracted.lang}，${String(extracted.files.length)} 个文件）`)
     } finally {
       this.controllers.delete(job.id)
     }
-  }
-
-  /** 全链与续取共用的后半：轮询到终态 → done 下载落盘 / failed 记原因 */
-  private async settleByPoll(id: string, token: string, signal: AbortSignal): Promise<void> {
-    const live = this.table.get(id)
-    if (live === undefined || live.batchId === undefined) return
-    const result: FileResult = await poll(token, live.batchId, {
-      interval: POLL_INTERVAL_S,
-      stallTimeout: POLL_STALL_S,
-      timeout: POLL_TIMEOUT_S,
-      onProgress: (pending) => this.noteProgress(id, pending),
-      signal,
-    })
-    if (!isDone(result)) {
-      await this.finish(id, 'failed', undefined, result.err_msg ?? `解析状态 ${result.state}`)
-      return
-    }
-
-    const extracted = await downloadExtract(result.full_zip_url ?? '', live.outDir)
-    const seen = this.get(id)?.progress
-    await this.finish(id, 'done', {
-      markdown: extracted.markdown,
-      lang: extracted.lang,
-      files: [...extracted.files],
-      ...(seen !== undefined ? { progress: { extractedPages: seen.totalPages, totalPages: seen.totalPages } } : {}),
-    })
-    this.info(`作业 ${id} 转换完成：${extracted.markdown}（${extracted.lang}，${String(extracted.files.length)} 个文件）`)
   }
 
   /** 轮询回包带来的进度：变了才落账，没变不写盘。只记账不推事件 */
