@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "MinerU 转换件：一个 gwb 件。提供 pdf2md 服务——PDF 经 MinerU 云端转 markdown，作业模式：submit 秒回、后台跑完落盘。0.5.1：peer 迁 ^（plugin-api ^0.1.2；下限从源上不存在的 0.1.0 改成真实版）、dev 钉跟到 latest",
+  "description": "MinerU 转换件：提供 pdf2md 服务——PDF 经 MinerU 云端转 markdown，作业模式绕开总线 120s 红线（submit 秒回、后台跑完落盘）；token 凭据住 mineru 设置节。服务 gwbPdf2md；skill 1 份；命令 3 条。",
   "type": "module",
   "repository": {
     "type": "git",
