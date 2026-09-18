@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-mineru",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "author": {
     "name": "godcreator"
   },
-  "description": "MinerU 转换件：一个 gwb 件。提供 pdf2md 服务——PDF 经 MinerU 云端转 markdown，作业模式：submit 秒回、后台跑完落盘",
+  "description": "MinerU 转换件：一个 gwb 件。提供 pdf2md 服务——PDF 经 MinerU 云端转 markdown，作业模式：submit 秒回、后台跑完落盘。0.5.1：peer 迁 ^（plugin-api ^0.1.2；下限从源上不存在的 0.1.0 改成真实版）、dev 钉跟到 latest",
   "type": "module",
   "exports": {
     ".": {
@@ -30,17 +30,17 @@
     "node": ">=24"
   },
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": ">=0.1.0"
+    "@godcreator/gwb-plugin-api": "^0.1.2"
   },
   "dependencies": {
     "adm-zip": "^0.5.18"
   },
   "devDependencies": {
-    "@godcreator/gwb-commands": "0.4.0",
-    "@godcreator/gwb-data": "0.1.1",
-    "@godcreator/gwb-plugin-api": "0.1.1",
-    "@godcreator/gwb-settings": "0.2.0",
-    "@godcreator/gwb-skills": "0.4.0",
+    "@godcreator/gwb-commands": "0.4.3",
+    "@godcreator/gwb-data": "0.1.2",
+    "@godcreator/gwb-plugin-api": "0.1.2",
+    "@godcreator/gwb-settings": "0.2.1",
+    "@godcreator/gwb-skills": "0.4.1",
     "@types/adm-zip": "^0.5.7",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.9",
