@@ -23,7 +23,6 @@
     "skills"
   ],
   "gwb": {
-    "plugin": true,
     "title": "PDF 转 markdown"
   },
   "scripts": {
@@ -50,5 +49,6 @@
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
-  }
+  },
+  "keywords": ["gwb", "gwb-plugin"]
 }
