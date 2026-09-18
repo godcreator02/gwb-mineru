@@ -14,12 +14,13 @@ description: 这个件造的词、gwb 线的词在这儿有特定含义的——
 | --- | --- |
 | **作业机** | 这个件的形态：`submit` 秒回作业号、后台跑全链、终态事件。对应 `src/index.ts` 的服务，见[作业机](/docs/job-runner) |
 | **作业** | 一次 PDF → markdown 转换的账（`Pdf2mdJob`）：输入、输出目录、状态、成败原因、产出三样。落盘就是它 |
-| **状态机六态** | `queued → uploading → running → done \| failed \| interrupted`；后三个是终态，到任一不再变化 |
+| **状态机六态** | `queued → uploading → running → done \| failed \| interrupted`；后三个是终态，到任一不再自动变化——`failed` / `interrupted` 可经[续取](/docs/usage)手动翻回 `queued` |
 | **串行 / 排队** | 作业一个接一个跑：前一个到终态才轮到下一个，没轮到的停在 `queued`。见[作业机](/docs/job-runner) |
 | **作业账** | 作业记录的落盘副本，经 gwbData 存进文档 `jobs`。重启后靠它对账 |
 | **进度**（`progress`） | 云端解析中报来的已解析页 / 总页，记在作业上；排队时没有，done 时补满。只记账，不推事件 |
 | **停滞** | 云端在解析（running / converting）而状态与已解析页数一段时间都不动——作业按 failed 结算。排队不算停滞，只受总上限管。见[云端客户端](/docs/mineru-client) |
-| **interrupted** | 宿主重启或件卸载打断的作业——账如实标注，不自动重跑；处置是重提一次。见[用法](/docs/usage)坑三条 |
+| **续取**（resume） | failed / interrupted 的作业凭账上 batchId 从云端轮询接着跑到终态——不重新申请位、不上传、**不重花解析额度**。云端结果留存有时限，过期只能重提。见[用法](/docs/usage) |
+| **interrupted** | 宿主重启或件卸载打断的作业——账如实标注，不自动重跑；处置先续取（resume），续不了再重提。见[用法](/docs/usage)坑三条 |
 | **零库概念** | 输入一个 PDF 绝对路径、一个输出目录，产出 markdown + images/。不知道 papers 存在，不做归档、不做成品命名 |
 | **语言判定** | 正文 zh/en 的判定：CJK 字数 × 3 ≥ ASCII 字母数判 zh。老仓口径原样，见[解包与语言](/docs/extract) |
 | **`job-settled`** | 作业到终态时经内核 emit 通道推的界面事件。给看着界面的人，不是给 agent 的回执 |

@@ -14,7 +14,7 @@ failed」而不是抛错；回包里的错误怎么认。
 PUT 到预签名 URL）、`poll`（轮询到终态，沿途把非终态回包交给回调）。外加 `isDone` 判定、
 `MineruError` 业务错、`MAX_FILE_BYTES` 云端单文件上限。
 
-{/* ref file="../src/core/mineru.ts" lines="64-96" */}
+{/* ref file="../src/core/mineru.ts" lines="66-98" */}
 
 ## 不知道什么
 
@@ -28,7 +28,7 @@ PUT 到预签名 URL）、`poll`（轮询到终态，沿途把非终态回包交
 解析结果与解析中的进度。**字段名对位 API 原始 JSON 键，不改写**——`full_zip_url` /
 `extract_progress` 这些下划线名字是 MinerU 的，不是本仓的：
 
-{/* ref file="../src/core/mineru.ts" lines="45-62" */}
+{/* ref file="../src/core/mineru.ts" lines="47-64" */}
 
 ## 提供的接口
 
@@ -43,7 +43,7 @@ PUT 到预签名 URL）、`poll`（轮询到终态，沿途把非终态回包交
 
 轮询的旋钮全在调用方手里——节奏、停滞上限、总上限、进度回调、打断信号：
 
-{/* ref file="../src/core/mineru.ts" lines="98-109" */}
+{/* ref file="../src/core/mineru.ts" lines="100-111" */}
 
 ## 依赖的接口
 
@@ -71,21 +71,21 @@ PUT 到预签名 URL）、`poll`（轮询到终态，沿途把非终态回包交
 云端配额与优先级的事，只受连排队在内的**总上限**管。两种都不是异常，是这条解析链的一种终局，
 err_msg 写明是哪一种、并提醒云端可能还在跑：
 
-{/* ref file="../src/core/mineru.ts" lines="129-146" */}
+{/* ref file="../src/core/mineru.ts" lines="131-148" */}
 
 **先认回包，再认状态码**：token 错走的是 HTTP 401、错误码的键叫 `msgCode`；任务不存在之类
 走 HTTP 200、键叫 `code`。只看状态码就会把 token 错吞成一句「HTTP 401」（形状实测见
 `probes/2609172223_api-error-shapes/`）。认得出的错误码附一句调用方照着就能做的话，认不出
 回包的非 2xx 才报 HTTP 错：
 
-{/* ref file="../src/core/mineru.ts" lines="162-177" */}
+{/* ref file="../src/core/mineru.ts" lines="164-179" */}
 
-{/* ref file="../src/core/mineru.ts" lines="26-35" */}
+{/* ref file="../src/core/mineru.ts" lines="26-37" */}
 
 **被打断要立刻醒**：件卸载 abort 时，`sleep` 里那个监听器先于定时器把 promise 拒掉——
 不等满一轮间隔：
 
-{/* ref file="../src/core/mineru.ts" lines="148-160" */}
+{/* ref file="../src/core/mineru.ts" lines="150-162" */}
 
 **接口那组是一批多文件，这个件一作业一文件**：申请上传位的 `files` 数组长度恒为 1，语义不变；
 申请时钉死 vlm 模型、公式表格都开、语言 `ch`（云端缺省，中英混合）：

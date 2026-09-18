@@ -1,0 +1,8 @@
+# 2026-09-18T04:27:40.062Z  汇总（总墙钟 9.6s，含申请位与顺序 PUT）
+f1-paper.pdf: 终态=done 排队停留≈6s 干活≈-1s err=
+f2-paper.pdf: 终态=done 排队停留≈6s 干活≈-1s err=
+f3-paper.pdf: 终态=done 排队停留≈6s 干活≈-1s err=
+f4-paper.pdf: 终态=done 排队停留≈6s 干活≈-1s err=
+f5-paper.pdf: 终态=done 排队停留≈6s 干活≈-1s err=
+干活窗口交叠的文件对数：0/0（0 = 云端对这批也是逐个转）
+最终 extract_result：[{"file_name":"f1-paper.pdf","state":"done","err_msg":"","zip":"有"},{"file_name":"f2-paper.pdf","state":"done","err_msg":"","zip":"有"},{"file_name":"f3-paper.pdf","state":"done","err_msg":"","zip":"有"},{"file_name":"f4-paper.pdf","state":"done","err_msg":"","zip":"有"},{"file_name":"f5-paper.pdf","state":"done","err_msg":"","zip":"有"}]

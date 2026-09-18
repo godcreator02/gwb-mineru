@@ -1,0 +1,6 @@
+# 2026-09-18T04:28:15.221Z  汇总（总墙钟 9.1s，含申请位与顺序 PUT）
+good1-paper.pdf: 终态=done 排队停留≈6s 干活≈-1s err=
+poison-random-bytes.pdf: 终态=failed 排队停留≈6s 干活≈-1s err=parsing failed, please try again later
+good2-paper.pdf: 终态=done 排队停留≈6s 干活≈-1s err=
+干活窗口交叠的文件对数：0/0（0 = 云端对这批也是逐个转）
+最终 extract_result：[{"file_name":"good1-paper.pdf","state":"done","err_msg":"","zip":"有"},{"file_name":"poison-random-bytes.pdf","state":"failed","err_msg":"parsing failed, please try again later","zip":"无"},{"file_name":"good2-paper.pdf","state":"done","err_msg":"","zip":"有"}]

@@ -13,7 +13,7 @@ description: 三块代码、一条作业的一生、盘上落了什么——一�
 
 | 模块 | 是什么 | 详见 |
 | --- | --- | --- |
-| **作业机**（`src/index.ts`） | cordis 服务 `gwbPdf2md`：收作业、秒回、后台跑全链、状态推进落账、重启对账、卸载打断。命令 `pdf2md.*` 也在这层登记 | [作业机](/docs/job-runner) |
+| **作业机**（`src/index.ts`） | cordis 服务 `gwbPdf2md`：收作业、秒回、后台跑全链、续取（resume）、状态推进落账、重启对账、卸载打断。命令 `pdf2md.*` 也在这层登记 | [作业机](/docs/job-runner) |
 | **云端客户端**（`src/core/mineru.ts`） | MinerU v4 API 的三个动作：申请上传位、PUT 上传、轮询到终态（停滞与总上限判定、回包错误翻译也在这）。纯函数模块，不认识作业 | [云端客户端](/docs/mineru-client) |
 | **解包与语言**（`src/core/extract.ts`） | 下载结果 zip、原样解进 outDir、认出 markdown、判 zh/en。纯函数模块，不认识云端 | [解包与语言](/docs/extract) |
 
@@ -21,18 +21,22 @@ description: 三块代码、一条作业的一生、盘上落了什么——一�
 
 ## 一条作业的一生
 
-状态机六态，`done` / `failed` / `interrupted` 是终态：
+状态机六态，`done` / `failed` / `interrupted` 是终态；终态里 `failed` / `interrupted` 可经
+**resume 手动**翻回 `queued`：
 
 ```
 queued → uploading → running → done | failed
    \───────── 重启或件卸载 ─────────→ interrupted
+
+failed / interrupted ──resume──→ queued（原批次续取，不重花额度）
 ```
 
 1. `pdf2md.submit`（或消费方调 `gwbPdf2md.submit`）验绝对路径、验文件在且不超 200MB、验 token 配了、建 outDir、落账，**秒回作业号**——返回不是完成
 2. 排队：作业一个接一个跑，前面还有作业时这条停在 `queued`
-3. 后台：申请上传位 → PUT 上传 → 轮询（5 秒一问；解析中页数 10 分钟不动判停滞，连云端排队总上限 1 小时）→ 下载 zip 解进 outDir
+3. 后台：申请上传位 → PUT 上传（落定后账上记 `uploaded`）→ 轮询（5 秒一问；解析中页数 10 分钟不动判停滞，连云端排队总上限 1 小时）→ 下载 zip 解进 outDir
 4. 每步推进都落账（gwbData，`jobs` 文档，写盘也排队），云端报的进度变了也落账；到达终态经内核 emit 通道推一条 `job-settled` 事件
 5. 宿主重启：上次留下的非终态作业（含排队中的）标 `interrupted`——不丢账、不假装还在跑，也不自动重跑
+6. 续取：对 `failed` / `interrupted` 且 `uploaded` 的作业喊 `pdf2md.resume`，凭账上 batchId 翻回 `queued` 走半链（跳过申请位与上传，从轮询接着跑）——云端已 done 的原批次取回，不重花额度；过期（-60012）结算回 failed 只能重提
 
 ## 盘上有什么
 

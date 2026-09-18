@@ -14,7 +14,8 @@ MinerU 转换件：提供 **pdf2md 服务**（`ctx.gwbPdf2md`）——PDF 经 Mi
 
 * **作业模式**：`submit` 秒回作业号（命令是页面等着的一次调用，分钟级云端解析不能在线等）；
   状态机 `queued→uploading→running→done|failed|interrupted`；解析中带云端进度（已解析页 /
-  总页）；作业账经 gwbData 落盘、重启标 interrupted
+  总页）；作业账经 gwbData 落盘、重启标 interrupted；`failed` / `interrupted` 可 `resume`
+  原批次续取，不重花解析额度
 * **设置**：`mineru` 节一枚 `token`（secret）
 * **事件**：落定时经内核 emit 通道推界面一条 `job-settled`
 

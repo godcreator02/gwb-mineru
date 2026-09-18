@@ -1,6 +1,6 @@
 ---
 name: pdf2md
-description: 要把一个 PDF 文件原样转成 markdown 时读。submit 秒回作业号、作业串行排队、成败看 status，讲清轮询节奏与进度、token 缺席与失效会怎么挡、产出落在哪。论文的转换与翻译不走这篇——那是 paper-fetch 的事。
+description: 要把一个 PDF 文件原样转成 markdown 时读。submit 秒回作业号、作业串行排队、成败看 status，讲清轮询节奏与进度、token 缺席与失效会怎么挡、失败或打断后先 resume 续取不重花额度、产出落在哪。论文的转换与翻译不走这篇——那是 paper-fetch 的事。
 ---
 
 # PDF 转 markdown（MinerU 作业机）
@@ -22,7 +22,10 @@ description: 要把一个 PDF 文件原样转成 markdown 时读。submit 秒回
    `queued → uploading → running → done | failed | interrupted`。`running` 时带
    `progress: { extractedPages, totalPages }`（云端排队时还没有）。十页上下的论文通常半分钟内
    done（排在后面的要加上前面的时间），问的间隔 5–10 秒就够；终态后别再问。
-3. **看全部**：`pdf2md.jobs {}`。
+3. **续取**：`failed` / `interrupted` 的作业先 `pdf2md.resume { "id": "<作业号>" }`——凭账上
+   batchId 原批次取回，**不重花额度**，秒回翻回 `queued`、照常轮询 status。被拒就听回执的话：
+   没走到上传完成的、云端任务已过期的，重新 submit。
+4. **看全部**：`pdf2md.jobs {}`。
 
 done 的作业带三样：`markdown`（outDir 里那份完整 markdown 的文件名，通常是
 `full.md`）、`lang`（zh/en，按 CJK 占比判）、`files`（落盘文件清单）。正文里的图是
@@ -35,11 +38,12 @@ done 的作业带三样：`markdown`（outDir 里那份完整 markdown 的文件
   （值是 secret，status 与日志里永远看不到它）
 - **token 失效挡不住，作业几秒内 failed**：error 里是 `code=A0211` 加一句换 token 的话。
   去 mineru.net 的 API 管理页换一个、settings.set 填上、重提
-- **`interrupted`**：宿主重启或件卸载把作业打断了——MinerU 侧可能其实做完了，但结果
-  没人取。重提一次作业就是了（同一个 PDF 再 submit 一遍）。
+- **`interrupted`**：宿主重启或件卸载把作业打断了——MinerU 侧可能其实做完了，结果还在。
+  **先 `pdf2md.resume` 续取**（原批次取回，不重花额度）；resume 被拒（没走到上传完成）才是
+  重提一次的事。
 - **失败原因看 `error`**：上传失败、解析失败、云端停滞（解析中页数 10 分钟不动）或超时
-  （连云端排队 1 小时）、超 200 页、当天任务数到顶、zip 结构不对，都在那一格，日志里也有同一句。
-  认得出的云端错误码后面附着照着就能做的话；`fetch failed` 括号里是网络层的真原因
+  （连云端排队 1 小时）、超 200 页、当天任务数到顶、云端任务过期、zip 结构不对，都在那一格，
+  日志里也有同一句。认得出的云端错误码后面附着照着就能做的话；`fetch failed` 括号里是网络层的真原因
 
 ## 界面通知
 

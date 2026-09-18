@@ -1,0 +1,47 @@
+# 2026-09-18T04:48:16.028Z  resume 回执
+{
+  "ok": true,
+  "data": {
+    "id": "20260918044046-1",
+    "input": "D:\\unitfolders\\26091718wvg\\papers\\10.1109_ecce-europe62795.2025.11238867\\paper.pdf",
+    "outDir": "C:\\Users\\GODAME~1\\AppData\\Local\\Temp\\mineru-resume-1789706446213",
+    "state": "queued",
+    "createdAt": "2026-09-18T04:40:46.331Z",
+    "updatedAt": "2026-09-18T04:48:12.585Z",
+    "batchId": "c47dbe02-252e-4d64-ba82-aa2ff62475e8",
+    "uploaded": true
+  }
+}
+# 等到的终态
+{
+  "id": "20260918044046-1",
+  "input": "D:\\unitfolders\\26091718wvg\\papers\\10.1109_ecce-europe62795.2025.11238867\\paper.pdf",
+  "outDir": "C:\\Users\\GODAME~1\\AppData\\Local\\Temp\\mineru-resume-1789706446213",
+  "state": "done",
+  "createdAt": "2026-09-18T04:40:46.331Z",
+  "updatedAt": "2026-09-18T04:48:14.816Z",
+  "batchId": "c47dbe02-252e-4d64-ba82-aa2ff62475e8",
+  "uploaded": true,
+  "markdown": "full.md",
+  "lang": "en",
+  "files": [
+    "full.md",
+    "images/78833741dde4cdb86f5c33204a72e3e1824acd24214e28e4636978e4f9273331.jpg",
+    "images/678a92281093399f2ac2b69f029bf19d3aaeddd8149ee0125f0e87b7dadf9f29.jpg",
+    "images/a3aa540ef26deea1a1803a5407d6866150acb2938fda7cbfb3f2caaf0f27d40b.jpg",
+    "images/7ffce74e96a70c80bfc9fab97bb7ee22b3782a04192ba49b11d09cd8705b85cb.jpg",
+    "images/1f6b68d37ba4b01b7c998723afa1661debcc02b7a3de356a0d0034f5cf2d2a13.jpg",
+    "images/96cd266f5b5c6855291981226ff8f49184ceec444b112eaafd70a3661c46b069.jpg",
+    "images/b4e96c921048b75e7a3966f0d3232906d1e8cc79d8d469f259cfadab0cab6cf2.jpg",
+    "images/4745d6de5e42ebad57da7a64075c6693693dfc1661acba152cfbaa6cc2a85332.jpg",
+    "images/4f9fffd7c9fc6b8e202c387f5a34a8b48c2c8134c7e9900880db9dbeadc4d0ef.jpg",
+    "images/6c97ebc39a9a054d77071ae90e14bbc2186a4942480b49089ea08111d504adaf.jpg",
+    "images/33a77784859b5ba015c7f47b3a93ace1ff7b8eaa8240d3883399f830aeb36c22.jpg",
+    "images/95b1a1bf2f7c6abab8fafbc2a0364dc4d3f513efc652a00e4adb8ef75616c9cb.jpg",
+    "images/3ddae67a493010cabf514d032995bdfe73f13d1efa2884d8d76c9e7a525ae33d.jpg",
+    "images/856875e2a9f468d256acbbf2eea2ad8cb91783b9d2bfee5c359e430064527330.jpg",
+    "images/f77fc84032deb689e0c9a4f9f326e8a9b9a71e2cdba9297ea296ebfe55e7d156.jpg",
+    "images/dec24d819fb2a49a71e0cdf5f0ee8290c6f3a1dff6329517cfd9daccec91267e.jpg",
+    "images/cb5f672d2fea7d89b3734e51329b93feccb5f506abb1f9084ca2540e5739c659.jpg"
+  ]
+}

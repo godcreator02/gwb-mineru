@@ -1,0 +1,7 @@
+# 2026-09-18T04:28:06.073Z  部分失败批（中间混随机字节坏文件）：good1-paper.pdf<-paper.pdf  poison-random-bytes.pdf<-mineru-corrupt-1789705686071.pdf  good2-paper.pdf<-paper.pdf
+# batchId 2f2e2a35-0053-4b8f-b048-4d338fd26592
+# PUT good1-paper.pdf 完成，耗时 0.5s（第 1/3 个，顺序传）
+# PUT poison-random-bytes.pdf 完成，耗时 0.1s（第 2/3 个，顺序传）
+# PUT good2-paper.pdf 完成，耗时 0.1s（第 3/3 个，顺序传）
+2026-09-18T04:28:08.732Z | good1-paper.pdf:waiting-file | poison-random-bytes.pdf:waiting-file | good2-paper.pdf:waiting-file | working=0
+2026-09-18T04:28:15.220Z | good1-paper.pdf:done | poison-random-bytes.pdf:failed | good2-paper.pdf:done | working=0

@@ -1,0 +1,3 @@
+# 2026-09-18T04:29:56.662Z  查老批次：2ef4305e-735b-405d-ab84-f5c0a5067fc1 fc5daf70-3f25-43ad-a595-e49c0471cfff
+2ef4305e-735b-405d-ab84-f5c0a5067fc1：查得回——[{"state":"done","zip":"有","err":""}]
+fc5daf70-3f25-43ad-a595-e49c0471cfff：查得回——[{"state":"done","zip":"有","err":""}]

@@ -1,0 +1,9 @@
+# 2026-09-18T04:27:30.414Z  纯好文件批：f1-paper.pdf<-paper.pdf  f2-paper.pdf<-paper.pdf  f3-paper.pdf<-paper.pdf  f4-paper.pdf<-paper.pdf  f5-paper.pdf<-paper.pdf
+# batchId a2ac7411-e2c8-4037-88d7-ea5f11972d21
+# PUT f1-paper.pdf 完成，耗时 0.6s（第 1/5 个，顺序传）
+# PUT f2-paper.pdf 完成，耗时 0.1s（第 2/5 个，顺序传）
+# PUT f3-paper.pdf 完成，耗时 0.1s（第 3/5 个，顺序传）
+# PUT f4-paper.pdf 完成，耗时 0.1s（第 4/5 个，顺序传）
+# PUT f5-paper.pdf 完成，耗时 0.1s（第 5/5 个，顺序传）
+2026-09-18T04:27:33.610Z | f1-paper.pdf:waiting-file | f2-paper.pdf:waiting-file | f3-paper.pdf:waiting-file | f4-paper.pdf:waiting-file | f5-paper.pdf:waiting-file | working=0
+2026-09-18T04:27:40.061Z | f1-paper.pdf:done | f2-paper.pdf:done | f3-paper.pdf:done | f4-paper.pdf:done | f5-paper.pdf:done | working=0

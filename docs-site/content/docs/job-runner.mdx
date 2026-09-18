@@ -11,7 +11,8 @@ description: src/index.ts——submit 秒回、作业串行排队跑全链、作
 ## 管什么
 
 作业的一生：验参落账秒回、排队等前面的作业跑完、后台跑全链（申请上传位 → 上传 → 轮询 → 解包）、
-每步推进落账、云端进度变了记账、终态推 UI 事件、启动对账、卸载打断。命令面 `pdf2md.*` 三条与说明书注册也在这层。
+每步推进落账、云端进度变了记账、终态推 UI 事件、启动对账、卸载打断；failed / interrupted 的
+续取（resume：原批次接着轮询，不重花额度）也在这层。命令面 `pdf2md.*` 四条与说明书注册也在这层。
 
 ## 不知道什么
 
@@ -25,16 +26,17 @@ description: src/index.ts——submit 秒回、作业串行排队跑全链、作
 
 一条作业的账，落盘就是它——只装可序列化的东西：
 
-{/* ref file="../src/index.ts" lines="44-62" */}
+{/* ref file="../src/index.ts" lines="44-64" */}
 
 `state` 六态：`queued → uploading → running → done | failed | interrupted`，后三态是终态。
 `queued` 是真排队态——前面还有作业在跑，这条就一直等着。`progress` 是云端报来的已解析页 / 总页，
-`running` 期间才会出现，done 时补满；云端排队时没有它。
+`running` 期间才会出现，done 时补满；云端排队时没有它。`uploaded` 是续取的凭据：上传落定那一刻
+才记上，resume 凭它跳过申请位与上传。
 
 ## 提供的接口
 
-- 服务 `ctx.gwbPdf2md`：`submit` / `get` / `list`（契约见[用法](/docs/usage)）
-- 命令 `pdf2md.submit` / `pdf2md.status` / `pdf2md.jobs`
+- 服务 `ctx.gwbPdf2md`：`submit` / `resume` / `get` / `list`（契约见[用法](/docs/usage)）
+- 命令 `pdf2md.submit` / `pdf2md.resume` / `pdf2md.status` / `pdf2md.jobs`
 - 事件 `job-settled`（终态时，经内核 emit 通道）
 - 说明书目录 `skills/`（经 gwb-skills 局部注入）
 
@@ -44,7 +46,7 @@ description: src/index.ts——submit 秒回、作业串行排队跑全链、作
 | --- | --- | --- | --- |
 | `gwbSettings` | define token 那格、现取 | gwb-settings 件 | 无——仓里没有单测设施 |
 | `gwbData` | 作业账 `writeDoc` / `readDoc`（文档名 `jobs`） | gwb-data 件 | 同上 |
-| `gwbCommands` | 登记三条命令 | gwb-commands 件 | 同上 |
+| `gwbCommands` | 登记四条命令 | gwb-commands 件 | 同上 |
 | `gwbSkills` | 注册说明书目录（局部、可选） | gwb-skills 件 | 同上 |
 | `gwbKernel.emit` | 终态推 `job-settled` | gwb-kernel | 同上 |
 
@@ -52,28 +54,31 @@ description: src/index.ts——submit 秒回、作业串行排队跑全链、作
 引用跨不到消费者扩展，所以用的时候一律 `this.own.<服务>` 现取（那晚的修理与翻案见
 [那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）：
 
-{/* ref file="../src/index.ts" lines="99-107" */}
+{/* ref file="../src/index.ts" lines="107-115" */}
 
 skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 
-{/* ref file="../src/index.ts" lines="169-172" */}
+{/* ref file="../src/index.ts" lines="188-191" */}
 
 ## 怎么单独测
 
 仓里没有单测设施，现状两条：`pnpm typecheck` 守类型；真链路进隔离 home 实跑（要真 token、
 真云端——`devkit.home.new` 开 home、`plugin-manager.install` 装件、`devkit.dev` 换开发版、
 `settings.set` 填 token）。实跑记录：全链与进度在 `probes/2609172224_poll-and-live-run/`，
-串行排队在 `probes/2609172342_serial-queue/`（同时交 3 个作业、每秒抽一次作业账）。
+串行排队在 `probes/2609172342_serial-queue/`（同时交 3 个作业、每秒抽一次作业账），续取在
+`probes/2609181245_resume/`（真 interrupted 续回、failed 演练续回、双挡回执）。
 能单测的两块被刻意切在服务外面——云端客户端与解包都是纯函数模块，不欠 cordis，
 这正是依赖方向单向的回报。
 
 ## 代码地图
 
 - **在哪**：`src/index.ts`，一个文件
-- **先读**：文件头注释（14–32 行，自我介绍）→ `submit`（179 行）→ `runQueued`（214 行）→ `run`（230 行）
+- **先读**：文件头注释（14–32 行，自我介绍）→ `submit`（198 行）→ `resume`（224 行）→
+  `runQueued`（257 行）→ `run`（274 行）
 - **读序**：`[Service.init]`（登记命令与设置、启动对账）→ `submit`（验参落账秒回、挂上排队链）→
-  `runQueued`（轮到时核状态、取 token）→ `run`（后台全链）→ `noteProgress`（进度记账）→
-  `finish`（状态推进 + 终态 emit）→ `persist` / `load`（账的排队写与对账）
+  `resume`（终态翻回 queued、同样挂链）→ `runQueued`（轮到时核状态、取 token、按 uploaded 分全链/半链）→
+  `run` / `runResumed`（后台全链与续取半链）→ `settleByPoll`（共用后半：轮询到终态）→
+  `noteProgress`（进度记账）→ `finish`（状态推进 + 终态 emit）→ `persist` / `load`（账的排队写与对账）
 - **可跳过**：`dist/`（tsc 产物）、`describeError`（把 `cause` 拼进失败原因的几行）
 
 ## 设计点（错了难改的那几条）
@@ -88,38 +93,49 @@ skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 在云端那头同一秒一起 `fetch failed` 过，逐个交则全过——判据与实跑见
 [那张卡](/trajectory/2026-09-17-serial-jobs)：
 
-{/* ref file="../src/index.ts" lines="193-196" */}
+{/* ref file="../src/index.ts" lines="212-215" */}
 
-{/* ref file="../src/index.ts" lines="213-227" */}
+{/* ref file="../src/index.ts" lines="255-271" */}
 
 **作业账写盘也排队**：进度、状态推进、新作业入账都会触发写盘，同一个 `jobs` 文档并发 rename
 在 Windows 上 `EPERM` / `ENOENT`。写盘挂到另一条链上，每次写轮到那一刻的整张账：
 
-{/* ref file="../src/index.ts" lines="298-308" */}
+{/* ref file="../src/index.ts" lines="362-372" */}
 
 **失败原因带上 cause**：`fetch` 失败时 `String(err)` 只有一句 `TypeError: fetch failed`，
 真原因（`ECONNRESET`、连接超时）在 `err.cause` 里——拼进作业的 `error` 与日志：
 
-{/* ref file="../src/index.ts" lines="89-97" */}
+{/* ref file="../src/index.ts" lines="97-105" */}
+
+**续取不重花额度，也不自动**：resume 只对 `failed` / `interrupted` 且账上有 `uploaded` 的作业开门
+——凭 batchId 翻回 `queued` 挂链尾，轮到时走半链（跳过申请位与上传，直接从轮询接着跑）。云端
+结果留存有时限（实测 ≥14 小时还查得回），过期时轮询回 `-60012`、翻成「重新提交」的话结算回
+failed。这与「失败不自动重试」不矛盾：重试是再花一次额度替调用方做决定，续取是把已花的那次
+取回来，喊不喊仍归调用方：
+
+{/* ref file="../src/index.ts" lines="218-239" */}
+
+{/* ref file="../src/index.ts" lines="273-302" */}
 
 **作业的命脉挂提供方，不挂消费者**：方法里的 `this.ctx` 是消费者的——定时器、落账、收尾
 全挂 `this.own`，消费者卸载不该带走一个还在跑的转换（上面「依赖的接口」那段钉过）。
 
 **启动对账与卸载打断，只标不重跑**：重启后上次留下的非终态作业（含还在排队的）标 `interrupted`
 （理由写进 error），件卸载时 abort 还在跑的控制器、把排队中的一并标上——不丢账、不假装还在跑，
-也**不**自动重提：
+也**不**自动重提；要接着跑喊 resume：
 
-{/* ref file="../src/index.ts" lines="310-332" */}
+{/* ref file="../src/index.ts" lines="374-396" */}
 
 **进度只记账，不推事件**：轮询每 5 秒一问，云端报的页数变了才写盘，没变不写；界面事件仍只有
 落定那一条 `job-settled`——看进度的人查 status，件不把每一轮回包转发成事件：
 
-{/* ref file="../src/index.ts" lines="267-276" */}
+{/* ref file="../src/index.ts" lines="331-340" */}
 
 **轮询的三个数定在这层**：5 秒一问、云端干活时进度停滞 10 分钟判失败、连排队在内总上限
 1 小时。怎么判停滞在[云端客户端](/docs/mineru-client)；数值是作业机的取舍——长文档与低优先级
 排队不该被墙钟误杀（误杀的代价是调用方重提、同一份页数再扣一次额度），卡死的也不该无限等。
-总上限从作业开始轮询算起，本地排队等前面作业的时间不算在内：
+总上限从作业开始轮询算起，本地排队等前面作业的时间不算在内；resume 是新一轮等待，上限从
+续取那一刻重算：
 
 {/* ref file="../src/index.ts" lines="39-42" */}
 
