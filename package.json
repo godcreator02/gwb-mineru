@@ -8,7 +8,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://git.tianshen02.online:28377/gwb-plugins/gwb-mineru.git"
+    "url": "https://git.tianshen02.online:28377/godcreator/gwb-mineru.git"
   },
   "exports": {
     ".": {
@@ -23,6 +23,7 @@
     "skills"
   ],
   "gwb": {
+    "plugin": true,
     "title": "PDF 转 markdown"
   },
   "scripts": {
