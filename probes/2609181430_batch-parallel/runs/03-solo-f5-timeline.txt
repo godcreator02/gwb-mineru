@@ -1,0 +1,9 @@
+# 2026-09-18T05:14:22.622Z  一批：批1[b1f1-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf]
+# 2026-09-18T05:14:23.400Z  PUT b1f1-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf 完成 0.8s（全局道）
+# 2026-09-18T05:14:23.401Z  批1 批 c6bd5a25-6cf5-4851-be08-7d823f15a165 开始轮询：b1f1-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf
+2026-09-18T05:14:23.851Z | b1f1-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf:waiting-file
+2026-09-18T05:14:30.368Z | b1f1-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf:running6/12
+2026-09-18T05:14:37.087Z | b1f1-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf:running11/12
+2026-09-18T05:14:45.644Z | b1f1-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf:running11/12
+2026-09-18T05:14:52.326Z | b1f1-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf:running11/12
+2026-09-18T05:14:59.089Z | b1f1-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf:failed

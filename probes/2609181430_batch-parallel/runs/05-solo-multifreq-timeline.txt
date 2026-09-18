@@ -1,0 +1,7 @@
+# 2026-09-18T05:16:31.795Z  一批：批1[b1f1-Multifrequency_Small-Signal_Model_for_Single-Phase_Grid-Tied_Inverters_Considering_the_Effect_of_PWM.pdf]
+# 2026-09-18T05:16:32.561Z  PUT b1f1-Multifrequency_Small-Signal_Model_for_Single-Phase_Grid-Tied_Inverters_Considering_the_Effect_of_PWM.pdf 完成 0.8s（全局道）
+# 2026-09-18T05:16:32.563Z  批1 批 3d15189b-fae8-4c29-8e38-d417c6ddd954 开始轮询：b1f1-Multifrequency_Small-Signal_Model_for_Single-Phase_Grid-Tied_Inverters_Considering_the_Effect_of_PWM.pdf
+2026-09-18T05:16:33.017Z | b1f1-Multifrequency_Small-Signal_Model_for_Single-Phase_Grid-Tied_Inverters_Considering_the_Effect_of_PWM.pdf:waiting-file
+2026-09-18T05:16:39.456Z | b1f1-Multifrequency_Small-Signal_Model_for_Single-Phase_Grid-Tied_Inverters_Considering_the_Effect_of_PWM.pdf:running6/12
+2026-09-18T05:16:45.892Z | b1f1-Multifrequency_Small-Signal_Model_for_Single-Phase_Grid-Tied_Inverters_Considering_the_Effect_of_PWM.pdf:running11/12
+2026-09-18T05:16:52.497Z | b1f1-Multifrequency_Small-Signal_Model_for_Single-Phase_Grid-Tied_Inverters_Considering_the_Effect_of_PWM.pdf:done

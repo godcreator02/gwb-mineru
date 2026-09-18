@@ -1,0 +1,9 @@
+# 2026-09-18T05:13:47.044Z  总墙钟（报名+全部 PUT+全部终态）17.1s
+## 批1
+# 2026-09-18T05:13:47.044Z  汇总（轮询墙钟 13.6s）
+b1f1-Reducing_Overvoltage_Stress_on_FB-SMs_in_the_Coordinated_Operation_of_Hybrid_MMCS_and_Hybrid_CBs_During_DC-side_Fault_Conditions.pdf: 终态=done 排队≈0s 干活≈-1s err=
+b1f2-基于单向电流型混合MMC的海上风电柔性直流紧凑化换流阀设计方法_蔡放.pdf: 终态=done 排队≈7s 干活≈6s err=
+b1f3-A_Hybrid_Modular_Multilevel_Converter_with_DC_Fault_Blocking_Capability.pdf: 终态=done 排队≈7s 干活≈-1s err=
+b1f4-A_Multiport_Power_Electronic_Transformer_Based_on_Three-Phase_Four-Arm_Full-Bridge_Modular_Multilevel_Converter.pdf: 终态=failed 排队≈7s 干活≈6s err=parsing failed, please try again later
+b1f5-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf: 终态=failed 排队≈7s 干活≈6s err=parsing failed, please try again later
+干活窗口交叠对数：3/3（>0 = 云端批内确实并行）

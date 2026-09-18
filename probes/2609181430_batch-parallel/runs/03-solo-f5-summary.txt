@@ -1,0 +1,5 @@
+# 2026-09-18T05:14:59.090Z  总墙钟（报名+全部 PUT+全部终态）38.0s
+## 批1
+# 2026-09-18T05:14:59.090Z  汇总（轮询墙钟 35.7s）
+b1f1-Design_Analysis_and_Capacitance_Reduction_of_Hybrid_Modular_Multilevel_Converters_Under_Boost_AC_Mode.pdf: 终态=failed 排队≈7s 干活≈29s err=parsing failed, please try again later
+干活窗口交叠对数：0/0（>0 = 云端批内确实并行）

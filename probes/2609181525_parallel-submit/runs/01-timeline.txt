@@ -1,0 +1,15 @@
+# 2026-09-18T05:22:32.365Z  数组交 3 篇：20260918052232-1 20260918052232-2 20260918052232-3（交前账上 19 条）
+# 每行：采样时刻 | 各作业状态 | 同时在跑（uploading/running）的个数
+2026-09-18T05:22:32.616Z | uploading uploading uploading | 3
+2026-09-18T05:22:34.009Z | uploading uploading uploading | 3
+2026-09-18T05:22:35.321Z | running running running | 3
+2026-09-18T05:22:36.673Z | running running running | 3
+2026-09-18T05:22:38.337Z | running running running | 3
+2026-09-18T05:22:40.539Z | running running running | 3
+2026-09-18T05:22:41.809Z | running running running | 3
+2026-09-18T05:22:43.006Z | running running running | 3
+2026-09-18T05:22:44.309Z | running running running | 3
+2026-09-18T05:22:45.866Z | running running running | 3
+2026-09-18T05:22:47.449Z | running done running | 2
+2026-09-18T05:22:48.783Z | done done done | 0
+# 同时在跑峰值：3

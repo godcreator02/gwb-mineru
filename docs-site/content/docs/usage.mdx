@@ -1,55 +1,47 @@
 ---
-title: 用法：把一个 PDF 变成 markdown
-description: 消费方 inject gwbPdf2md，agent 走 pdf2md.* 三条命令；token 怎么配、事件怎么收、interrupted 怎么办
+title: 用法：把 PDF 变成 markdown
+description: 消费方 inject gwbPdf2md，agent 走 pdf2md.* 三条命令；token 怎么配、事件怎么收、失败与打断怎么办
 ---
 
-# 用法：把一个 PDF 变成 markdown
+# 用法：把 PDF 变成 markdown
 
 **本页回答**：现在的代码怎么用——消费方代码怎么 inject、agent 走哪三条命令、token 配在哪、
 产出长什么样、失败了怎么处置。
 
 ## 两条门，一张脸
 
-- **消费方（代码）**：`inject: ['gwbPdf2md']`，拿 `ctx.gwbPdf2md` 四方法——`submit(input, outDir)`
-  / `resume(id)` / `get(id)` / `list()`。gwb-paper-fetch（单元 `26090814ifd`）就是这么在代码里注入做论文转换的，
-  agent 面上走它的 `paper-fetch.convert`，不直接碰这个件
+- **消费方（代码）**：`inject: ['gwbPdf2md']`，拿 `ctx.gwbPdf2md` 三方法——`submit(files)`
+  （一作业一文件的数组）/ `get(id)` / `list()`。gwb-paper-fetch（单元 `26090814ifd`）就是
+  这么在代码里注入做论文转换的，agent 面上走它的 `paper-fetch.convert`，不直接碰这个件
 
-{/* ref file="../src/index.ts" lines="67-83" */}
+{/* ref file="../src/index.ts" lines="65-82" */}
 
-- **agent（命令）**：`pdf2md.submit` / `pdf2md.resume` / `pdf2md.status` / `pdf2md.jobs` 四条，「一个孤立 PDF
+- **agent（命令）**：`pdf2md.submit` / `pdf2md.status` / `pdf2md.jobs` 三条，「一个孤立 PDF
   想要 markdown」走这边
 
-{/* ref file="../src/index.ts" lines="147-186" */}
+{/* ref file="../src/index.ts" lines="145-177" */}
 
-## submit 秒回，作业一个接一个跑，成败看 status
+## submit 收数组、秒回，作业各自独立同时跑
 
-**返回不是完成。** MinerU 云端解析是分钟级的，而命令是页面等着的一次调用——所以作业号先回，
-后台跑全链，终态经 `pdf2md.status` 查、或等 `job-settled` 事件。**作业串行**：一次交一批也只
-跑一个，其余是 `queued`，前一个到终态才轮到下一个——调用方不用自己排队，也别以为 `queued`
-久了是卡住。轮询 5 秒一问；云端解析中
-页数 10 分钟不动、或连排队在内 1 小时没完，结算为 `failed`（error 说明是停滞还是超时）。
-解析中的作业带 `progress`（已解析页 / 总页），云端排队时没有它。
+**返回不是完成。** MinerU 云端解析是分钟级的，而命令是页面等着的一次调用——所以作业号
+数组先回、后台各跑各的，终态经 `pdf2md.status` 查、或等 `job-settled` 事件。一次交几篇，
+几篇就**同时**在跑（云端一个任务一个任务地转，互不排队）——`pdf2md.jobs` 里看到多条
+`running` 是常态。验参是整批验：数组里有一条坏形状（路径不绝对、文件不在、超 200MB），
+**整批当场拒**，不落半批账；token 没配也是当场挡，不排出注定失败的作业。
+
+轮询 5 秒一问；云端解析中页数 10 分钟不动、或连云端排队 1 小时没完，结算为 `failed`
+（error 说明是停滞还是超时）。解析中的作业带 `progress`（已解析页 / 总页），云端排队时没有它。
 
 done 的作业带三样：`markdown`（outDir 里那份完整 markdown 的文件名，通常是 `full.md`）、
 `lang`（zh/en，按 CJK 占比判）、`files`（落盘清单）。正文里的图是 `images/xxx` 相对链接，
 跟 md 同层，不用改。
 
-## 失败之后：先续取（resume），再重提
-
-超时或被打断结算成 `failed` / `interrupted` 时，**云端那头可能其实已经跑完**——作业账上记着
-batchId。`pdf2md.resume { "id": "<作业号>" }` 凭它重新入列，轮到时从云端轮询接着跑：云端已
-done 就直接下载落盘翻 `done`，**不重新申请位、不上传、不重花解析额度**。续取也排队，不插队。
-
-resume 秒回翻回 `queued` 的账，终态照常等 `pdf2md.status` 或 `job-settled` 事件。两种续不了、
-只能重新 submit，回执里都会说明：没走到上传完成的（云端没有它的文件），和云端任务已过期的
-（结果留存有时限，error 里是「云端任务已过期，续取不回——重新提交」那句）。
-
 ## token 缺席当场挡，token 失效写进 error
 
 设置节 `mineru`、键 `token`（secret），在 mineru.net 的 API 管理页创建；没配时 submit 报一句
-「MinerU token 没配」，不会排出一个注定失败的作业：
+「MinerU token 没配」：
 
-{/* ref file="../src/index.ts" lines="85-91" */}
+{/* ref file="../src/index.ts" lines="84-90" */}
 
 配置命令：`settings.set { "section": "mineru", "key": "token", "value": "…" }`。值是 secret，
 status 与日志里永远看不到它。token 是**现取现读**的——settings 改值不用重挂件。
@@ -65,14 +57,15 @@ jobId / ok / outDir / error）。**事件是给看着界面的人的，不是给
 
 ## 坑三条
 
-- **`interrupted`**：宿主重启或件卸载把作业打断了，账上如实标注。MinerU 侧可能其实做完了，
-  结果还在——**先 `pdf2md.resume` 续取**（原批次取回，不重花额度）；resume 被拒（没走到上传
-  完成）才是重提一次的事
+- **`interrupted`**：宿主重启或件卸载把作业打断了，账上如实标注。MinerU 侧可能其实做完了，但
+  结果没人取——**重提一次作业就是了**（同一个 PDF 再 submit 一遍），没有恢复续跑
 - **失败原因看 `error`**：上传失败、解析失败、停滞或超时、zip 结构不对、云端业务错，都在那一格，
-  日志里也有同一句。认得出的云端错误码（token 失效、超 200MB、超 200 页、当天任务数到顶、
-  任务过期）附一句照着就能做的话；网络层失败（`fetch failed`）括号里带真原因（`ECONNRESET` 之类）
-- **两个参数都得是绝对路径**：`input` 得是存在的文件、不超过 200MB，`outDir` 不存在会递归建——
-  submit 当场验，验不过抛错不落账（也不建 outDir）。200 页上限要云端数，超了作业 failed
+  日志里也有同一句。认得出的云端错误码（token 失效、超 200MB、超 200 页、当天任务数到顶）附一句
+  照着就能做的话；网络层失败（`fetch failed`）括号里带真原因（`ECONNRESET` 之类）——mineru.net
+  的连接偶发抖动与并发无关（单发也撞、重试即过），看到它重提就好
+- **files 里每一项都得是两个绝对路径**：`input` 得是存在的文件、不超过 200MB，`outDir` 不存在会
+  递归建——submit 当场验，验不过整批抛错不落账（也不建 outDir）。200 页上限要云端数，超了作业
+  failed
 
 说明书（给 agent 的那份）住包内 `skills/pdf2md/SKILL.md`，经 gwb-skills 件开出；没装 skills 件
 的 home 里作业机照常挂——skills 是局部可选注入。

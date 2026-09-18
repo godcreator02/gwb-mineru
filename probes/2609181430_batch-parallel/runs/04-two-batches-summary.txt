@@ -1,0 +1,13 @@
+# 2026-09-18T05:15:55.383Z  总墙钟（报名+全部 PUT+全部终态）40.7s
+## 批1
+# 2026-09-18T05:15:55.384Z  汇总（轮询墙钟 27.3s）
+b1f1-混合MMC子模块电容电压波动特性分析及抑制方法_陆锋.pdf: 终态=failed 排队≈0s 干活≈26s err=parsing failed, please try again later
+b1f2-Multifrequency_Small-Signal_Model_for_Single-Phase_Grid-Tied_Inverters_Considering_the_Effect_of_PWM.pdf: 终态=failed 排队≈0s 干活≈13s err=parsing failed, please try again later
+b1f3-A12_Impedance-Based_Dynamics_Analysis_for_DC-Link_Voltage-Synchronized_Voltage-Source_Converters.pdf: 终态=failed 排队≈0s 干活≈13s err=parsing failed, please try again later
+干活窗口交叠对数：3/3（>0 = 云端批内确实并行）
+## 批2
+# 2026-09-18T05:15:55.384Z  汇总（轮询墙钟 20.8s）
+b2f1-超调制下混合模块化多电平变换器的系统优化与控制研究_张雅倩.pdf: 终态=done 排队≈0s 干活≈-1s err=
+b2f2-Adaptive_Two-Step_Arm_Current_MPC_for_Transformerless_Hybrid_MMC_With_Overmodulation_Conditions_in_Unbalanced_AC_Grids.pdf: 终态=done 排队≈6s 干活≈13s err=
+b2f3-A_Submodule_Fault_Tolerance_and_DC_Fault_Handling_Method_Based_on_Novel_Topology_for_Hybrid_Modular_Multilevel_Converters.pdf: 终态=done 排队≈6s 干活≈13s err=
+干活窗口交叠对数：1/1（>0 = 云端批内确实并行）

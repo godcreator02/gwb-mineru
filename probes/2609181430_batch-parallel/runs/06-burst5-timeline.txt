@@ -1,0 +1,6 @@
+# 2026-09-18T05:17:48.590Z  并发 5 路：报名、PUT、轮询各跑各的（0.3.0 事故的原始形状）
+2026-09-18T05:17:58.150Z | f2-paper.pdf: PUT 0.5s → done
+2026-09-18T05:17:58.615Z | f3-paper.pdf: PUT 0.7s → done
+2026-09-18T05:17:58.627Z | f4-paper.pdf: PUT 0.7s → done
+2026-09-18T05:17:58.668Z | f5-paper.pdf: PUT 0.7s → done
+2026-09-18T05:17:59.133Z | f1-paper.pdf: PUT 0.6s → done
