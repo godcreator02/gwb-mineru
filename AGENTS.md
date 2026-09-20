@@ -9,6 +9,7 @@ PDF 经 MinerU 云端转 markdown。**件名是引擎（gwb-mineru）、服务�
 
 ```powershell
 pnpm install && pnpm build && pnpm typecheck   # 门禁：build + typecheck，绿了才提交
+pnpm test                                      # 单测：先 build，再 node --test "tests/*.test.mjs"
 cd docs-site; pnpm dev                         # 文档站，http://localhost:4317
 pnpm exec docfirst check                       # 钉码门禁，单独跑，红了提交不许推
 ```
@@ -20,8 +21,15 @@ pnpm exec docfirst check                       # 钉码门禁，单独跑，红�
 ## 硬约束
 
 * **零库概念不许破**：不认识 papers、不做归档与成品命名、不做结果缓存——产出原样落
-  调用方给的 outDir，交出去的就三样（markdown 文件名、lang、文件清单）
+  调用方给的 outDir，交出去的就是原料：markdown 文件名、lang、文件清单，外加这次怎么落的
+  （`commit` / `backup`）与没搬的清单（`skipped`）
 * **submit 必须秒回**：作业号数组先回、后台各跑各的，绝不把分钟级云端解析放进一次同步调用
+* **一个 outDir 一次只落一个作业**：提交时同步占位，同批撞车或撞上在跑的作业整批当场拒——
+  两条并排往同一个目录里解，先落定的那条账立刻不准。已有产物默认拒，要覆盖得显式 `overwrite`
+* **产物整份出现，围栏一条不合格整包不落盘**：全量 entry 过关才解进工作根 staging，
+  提交点是整体 rename；盘符/`..`/反斜杠/绝对路径/真实路径逃逸一律结构化拒（见 extract.ts）
+* **原始 zip 先落盘**：工作根留一份归档，解包失败/中断后凭它 `pdf2md.recover` 重解，
+  零云端零额度——别把重解包做成云端重提
 * **失败不自动重试**：失败原因如实进作业的 `error`；处置（重提）归调用方
 * **作业全并行、不聚合**：一次交 N 篇就是 N 个独立单文件任务，各自全链跑——聚合进一个
   云端 batch\_id 是实测否掉的形状（解析连带失败）；网络抖动与并发无关（单发也撞、重试即过），
@@ -35,9 +43,9 @@ pnpm exec docfirst check                       # 钉码门禁，单独跑，红�
 
 ## 代码地图
 
-`src/index.ts`（作业机：状态机、账、命令、事件）→ `src/core/mineru.ts`（云端三动作）→
-`src/core/extract.ts`（zip 解包 + CJK 语言判定）。后两块是纯函数模块、互不认识；细节读
-文档站现状区三页。
+`src/index.ts`（作业机：状态机、账、命令、事件、outDir 占用与覆盖策略）→ `src/core/mineru.ts`
+（云端三动作）→ `src/core/extract.ts`（zip 围栏 + staging 原子提交 + 归档 + CJK 语言判定）。
+后两块是纯函数模块、互不认识；单测在 `tests/`，细节读文档站现状区三页。
 
 ## 生成物与实验材料
 

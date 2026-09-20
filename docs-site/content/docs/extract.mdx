@@ -1,74 +1,133 @@
 ---
-title: 解包与语言：zip 原样落盘
-description: src/core/extract.ts——下载 zip、只搬 markdown 与 images/、认出 full.md、判 zh/en；零库概念在这一层兑现
+title: 解包与语言：zip 围栏、原子提交
+description: src/core/extract.ts——下载 zip、围栏校验全部 entry、解进 staging 再原子提交进 outDir、认出 full.md、判 zh/en；零库概念在这一层兑现
 ---
 
-# 解包与语言：zip 原样落盘
+# 解包与语言：zip 围栏、原子提交
 
-**本页回答**：结果 zip 怎么变成 outDir 里的文件；markdown 怎么认、认不出怎么办；zh/en
-怎么判；「零库概念」具体指什么。
+**本页回答**：结果 zip 怎么变成 outDir 里的文件；归档里哪些条目能落、哪些当场拒；产物什么时候
+「整份出现」；已有产物怎么处置；zh/en 怎么判；「零库概念」具体指什么。
 
 ## 管什么
 
-一条链：下载 zip → 挑出 markdown → 把 markdown 与 `images/` 原样解进 outDir → 按 CJK
-占比判语言。交出三样：markdown 文件名、lang、落盘文件清单。
+一条链：**下载 zip → 先在 outDir 同级的工作根留一份归档 → 挑出 markdown → 围栏全量校验每一条 entry
+→ 解进工作根里的 staging → 原子提交进 outDir → 按 CJK 占比判语言**。
 
-{/* ref file="../src/core/extract.ts" lines="47-76" */}
+{/* ref file="../src/core/extract.ts" lines="148-198" */}
+
+两个入口：`downloadExtract(zipUrl, outDir, options)` 走云端那条路（抓下来先落盘再见解包，云端只管给
+zip）；`extractArchive(archive, outDir, options)` 从盘上那份归档解——零网络，作业机的
+`pdf2md.recover` 走的就是它。
 
 ## 不知道什么
 
 - 不知道 zip 从哪来——URL 是[云端客户端](/docs/mineru-client)轮询出来的
 - 不知道 outDir 之后被谁用、文件该叫什么——成品命名是调用方（如 papers）的私约
 - 不知道论文库存在——「归档副本 + 成品位」那套篇目录布局不在这儿，这个件只交原料
+- 不知道作业的账——它只回一份结果：产物三样，加没搬的清单、归档路径与这次提交的结果
 
 ## 数据结构
 
-{/* ref file="../src/core/extract.ts" lines="27-34" */}
+{/* ref file="../src/core/extract.ts" lines="94-116" */}
 
-`markdown` 是 outDir 里那份完整 markdown 的**文件名**（如 `full.md`）；`files` 是相对
-outDir 的 POSIX 路径清单。
+`markdown` 是 outDir 里那份完整 markdown 的**文件名**（如 `full.md`）；`files` 是相对 outDir 的
+POSIX 路径清单；`skipped` 是白名单外、没搬的条目（zip 根上的 `layout.json` 之类，列出来不静默丢）；
+`archive` 是原始 zip 的落盘副本；`commit` 说这次是**新建**（`created`）还是**覆盖**（`replaced`，
+旧产物在 `backup`）。
 
 ## 提供的接口
 
 | 名字 | 是什么 |
 | --- | --- |
-| `downloadExtract(zipUrl, outDir)` | 下载、解包、判语言，回 `ExtractResult` |
+| `downloadExtract(zipUrl, outDir, options)` | 下载、归档、解包、判语言，回 `ExtractResult` |
+| `extractArchive(archive, outDir, options)` | 从盘上那份归档解一遍，零网络（`pdf2md.recover` 用它） |
 | `isChineseDominant(body)` | CJK 字数×3 ≥ ASCII 字母数判 zh（老仓口径原样） |
-| `ArchiveError` | zip 结构不符合预期时抛：找不到 markdown、或候选不唯一 |
+| `ArchiveError` | zip 结构不符合预期时抛：找不到 markdown、候选不唯一、markdown 不在根下 |
+| `EntryRejectedError` | 某条 entry 犯围栏时抛：带 `entry`（哪条）与 `reason`（犯的哪条） |
+| `CommitRejectedError` | 提交点到不了位时抛：带 `outDir`；outDir 一个字节没动 |
+
+三类错误都带 `archive`——归档已经落盘时指明它在哪，调用方凭它重新解包，不必再问云端要。
 
 ## 依赖的接口
 
-`adm-zip`（唯一的 runtime 依赖）、全局 `fetch`、`node:fs/promises`。零 gwb 依赖。
+`adm-zip`（唯一的 runtime 依赖）、全局 `fetch`、`node:fs/promises` 与 `node:fs` 的
+`realpathSync.native`。零 gwb 依赖。
 
 ## 怎么单独测
 
-两块天然可测：`isChineseDominant` 是纯函数，喂字符串即可；zip 认名逻辑（`findMarkdown`）
-喂条目名列表即可。但仓里没有单测设施，现状是 `pnpm typecheck` 加真链路实跑。
+`pnpm test`（先 `pnpm build`，再 `node --test "tests/*.test.mjs"`）。打这一层的是
+`tests/extract.test.mjs`：围栏七种犯法各一条（`..` 段、反斜杠、盘符、绝对路径、备用数据流、
+控制字符、归一后一个段都不剩）、一条坏的混在好条目里必须整包零落盘、提交点的默认拒与显式覆盖、
+同 outDir 两条并排、以及「归档落盘后零网络再解一遍」。云端与真 PDF 都不出现：`fetch` 是替身、
+zip 是 adm-zip 现搓的（`tests/helpers.mjs`）——`addFile` 会把 `..` 归一掉，所以那条 helper 先按
+占位名加、再把 `entryName` 改回原样。
 
 ## 代码地图
 
 - **在哪**：`src/core/extract.ts`，一个文件
-- **先读**：文件头注释（1–10 行）→ `downloadExtract`
-- **读序**：`downloadExtract`（下载 → 过滤 → 落盘 → 校验 → 判语言）→ `findMarkdown`
-  （认名）→ `isChineseDominant`（语言）
-- **可跳过**：`countMatches` / `zipBasename` 两个五行小件
+- **先读**：文件头注释（1–19 行，三条硬规矩）→ `downloadExtract`（131 行）→ `extractArchive`（149 行）
+- **读序**：`extractArchive`（归档 → 围栏分拣 → staging → 提交）→ `planEntries` / `splitEntryName`
+  （围栏）→ `assertRealInside`（真实路径）→ `publish`（提交点）→ `findMarkdown`（认名）→
+  `isChineseDominant`（语言）
+- **可跳过**：`safeSegment` / `stamp` / `zipBasename` 几个小件、`parseJournal`（提交中途的账）
 
 ## 设计点（错了难改的那几条）
 
-**只搬 markdown 本体与 images/ 下的东西**：zip 根上的其余杂项（layout.json 之类）不落盘
-——调用方拿到的是干净的产出，不是云端的整包：
+**围栏：全量校验完才落盘**。一条 entry 的名字要过六道——空名、控制字符、反斜杠（Windows 上它也是
+分隔符，落点说不清）、冒号（盘符或 NTFS 备用数据流）、绝对路径、`..` 段；归一后两条 entry 撞同一个
+落点、或一条既是文件又是另一条的父目录，同样拒。**一条不合格整包不落盘**，报出是哪条、犯的哪条：
 
-{/* ref file="../src/core/extract.ts" lines="61-72" */}
+{/* ref file="../src/core/extract.ts" lines="255-269" */}
 
-**认 markdown：full.md 优先，否则要求唯一**：优先认 `full.md`；没有它就得只有一份 `.md`，
-两份以上歧义即抛——猜一个，比报错贵：
+**白名单只有两样**：根下那份 markdown 本体，与严格 `images/` 子树里的东西。zip 根上的杂项
+（`layout.json` 之类）**不搬但不拒**——它们是云端正常会带的，只是不落盘；不搬的逐条列进 `skipped`，
+让人看得见丢的是什么：
 
-{/* ref file="../src/core/extract.ts" lines="78-88" */}
+{/* ref file="../src/core/extract.ts" lines="221-253" */}
 
-**解包完自检一次**：markdown 不在清单里说明 outDir 状态不可信，当场抛、让作业进 failed
-——不带病返回。
+**落点还要过一次真实路径**：词法上没毛病不等于真落在里面——软链 / 目录联接件能把落点绕出去。
+父目录还不存在时，realpath 它**最近的已存在祖先**、再把剩下的段拼回来，比对是否跑出落点根：
+
+{/* ref file="../src/core/extract.ts" lines="271-295" */}
+
+**提交点是 rename，产物整份出现**。解包全在 outDir 同级工作根的 `staged-<作业号>` 里做完，提交时
+整体 rename 进 outDir——outDir 要么还是上一版、要么就是完整的新版，**没有半个产出**这种中间态
+（老形状是逐文件原地覆盖，写一半挂掉就新旧混着）。提交点同时是并发的那道闸：outDir 在查过之后、
+rename 之前被别人占了，Windows 给 EPERM/EEXIST，翻成结构化拒，说清 outDir 没动：
+
+{/* ref file="../src/core/extract.ts" lines="297-358" */}
+
+**已有产物默认拒，要覆盖得显式**。outDir 是空的（或不存在）→ 直接提交；里面有东西而这次没带
+`overwrite` → 拒，一个字节不动；带了 `overwrite` → 旧产物**整份**先 rename 进工作根的
+`backup-<时间戳>/`，再上新的。备份不自动清——那是调用方的东西，件不替它删。
+
+**崩在两次 rename 之间也不留空目录**。覆盖要挪两次（旧的去备份、新的进来），中间断电会留下
+「outDir 不在、旧产物在备份里」。提交前先写一份 journal，下一次对同一个 outDir 开工时凭它把旧产物
+搬回去——宁可退回上一版，也不给调用方一个产物不见了的目录：
+
+{/* ref file="../src/core/extract.ts" lines="360-374" */}
+
+**归档先落盘，再解包**。原始 zip 写进工作根（先写 `.part` 再 rename，半截 zip 不冒充归档），
+文件名带作业号。解包失败/中断时它就是「不用再花一次云端额度」的凭据——`pdf2md.recover` 拿它重走
+一遍同一条链（同一套围栏、同一个提交点）：
+
+{/* ref file="../src/core/extract.ts" lines="130-146" */}
+
+工作根是 outDir 同级的 `.<outDir 名>.pdf2md`：staging、归档、备份都住里面，**不在 outDir 里**
+（产出的目录要干净，整份 rename 也才成立）。调用方随时可以把它整个删掉——除了正在跑的那条作业：
+
+{/* ref file="../src/core/extract.ts" lines="200-210" */}
+
+**认 markdown：full.md 优先，否则要求唯一，且必须在根下**：优先认 `full.md`；没有它就得只有一份
+`.md`，两份以上歧义即抛（猜一个，比报错贵）；认出来的那份不在 zip 根下同样抛——这个件的契约只认
+根下那份：
+
+{/* ref file="../src/core/extract.ts" lines="409-422" */}
+
+**解包完自检一次**：markdown 不在 staging 里说明这趟解包不可信，当场抛、让作业进 failed——
+不带病提交。
 
 **语言判定跟着件走**：CJK 占比是通用文本分析，跟论文库没有关系；调用方拿 `lang` 去定
 自己的成品命名。口径是老仓原样：CJK 字数 × 3 ≥ ASCII 字母数判 zh。
 
-{/* ref file="../src/core/extract.ts" lines="36-45" */}
+{/* ref file="../src/core/extract.ts" lines="118-128" */}

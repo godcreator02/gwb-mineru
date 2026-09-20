@@ -29,14 +29,17 @@ queued → uploading → running → done | failed
 ```
 
 1. `pdf2md.submit`（或消费方调 `gwbPdf2md.submit`）收**数组**：整批验绝对路径、验文件在且不超
-   200MB、验 token 配了、建好各 outDir、落完账，**秒回作业号数组**——返回不是完成；有一条坏
-   形状整批当场拒，不落半批账
+   200MB、验 token 配了、验每个 outDir 收不收这条作业（里面有东西而没带 `overwrite` 就拒）、
+   **同步占住每个 outDir**、落完账，**秒回作业号数组**——返回不是完成；有一条坏形状整批当场拒，
+   不落半批账，两条作业瞄同一个 outDir 同样当场拒
 2. 各自开跑、互不排队：每条作业独立走全链（报名 → PUT 上传 → 轮询（5 秒一问；解析中页数
-   10 分钟不动判停滞，连云端排队总上限 1 小时）→ 下载 zip 解进自己的 outDir）——一次交 N 篇，
-   `pdf2md.jobs` 里 N 条同时 `running` 是常态
+   10 分钟不动判停滞，连云端排队总上限 1 小时）→ 下载 zip 到工作根留一份归档 → 围栏校验全部
+   entry → 解进 staging → 原子提交进自己的 outDir）——一次交 N 篇，`pdf2md.jobs` 里 N 条同时
+   `running` 是常态
 3. 每步推进都落账（gwbData，`jobs` 文档，写盘排队），云端报的进度变了也落账；到达终态经内核
    emit 通道推一条 `job-settled` 事件
 4. 宿主重启：上次留下的非终态作业标 `interrupted`——不丢账、不假装还在跑，也不自动重跑
+5. 解包那一段失败时账上记着归档路径，`pdf2md.recover` 凭它零云端重解一遍
 
 ## 盘上有什么
 
@@ -44,6 +47,7 @@ queued → uploading → running → done | failed
 | --- | --- |
 | `<outDir>/full.md` | 完整 markdown（名字以作业 `markdown` 字段为准，通常是 full.md） |
 | `<outDir>/images/…` | 正文引用的图，跟 md 同层的相对链接，不用改 |
+| `<outDir>` 同级的 `.<outDir 名>.pdf2md/` | **工作根**：`archive-<作业号>.zip`（原始 zip 的落盘副本，recover 凭它）、`backup-<时间戳>/`（覆盖时挪出来的上一版）、staging 与提交 journal（都是过路的）。调用方随时可以整个删掉——正在跑的那条作业除外 |
 | `<home>/node_modules/@godcreator/gwb-mineru` | 件本体；进 home 走 `plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`（条目 id `mineru`，设置节随它） |
 
 作业账经 gwbData 落在 home 的数据区（文档名 `jobs`），不是文件树的公开面。
@@ -52,7 +56,7 @@ queued → uploading → running → done | failed
 
 | 什么 | 值 |
 | --- | --- |
-| 门禁 | `pnpm build` + `pnpm typecheck`（仓根）；`pnpm exec docfirst check`（docs-site，单独跑） |
+| 门禁 | `pnpm build` + `pnpm typecheck` + `pnpm test`（仓根）；`pnpm exec docfirst check`（docs-site，单独跑） |
 | 文档站 dev | `pnpm dev`（docs-site 下），端口 4317 |
 | 包源 | gitea 个人源 `https://git.tianshen02.online:28377/api/packages/godcreator/npm/`，`@godcreator` scope 路由住用户级 `~/.npmrc`，仓里不配 |
 | 凭据 | settings 节 `mineru`，键 `token`（secret），mineru.net 的 API 管理页创建 |

@@ -1,0 +1,31 @@
+# 解包围栏 / 同 outDir 并发 —— 探针
+模块：D:\unitfolders\evew5-gwbapps\gwb-mineru\dist\core\extract.js
+
+## 1 越界写（GWB-30）：归档里塞 ../ 与反斜杠变体
+- 正斜杠 "images/../../zip-escaped.txt"
+  拒了——EntryRejectedError: 结果 zip 里这条 entry 不能落盘："images/../../zip-escaped.txt"——有 .. 段——解析后会跑到 outDir 外面（entry="images/../../zip-escaped.txt" reason=dotdot）
+  落盘：.out.pdf2md/archive-probe-slash.zip
+  工作根里的东西（按设计）：.out.pdf2md/archive-probe-slash.zip
+  outDir 与工作根之外的文件：无
+- 反斜杠 "images/..\\..\\zip-escaped2.txt"
+  拒了——EntryRejectedError: 结果 zip 里这条 entry 不能落盘："images/..\\..\\zip-escaped2.txt"——名字里有反斜杠——Windows 上它也是路径分隔符，落点说不清（entry="images/..\\..\\zip-escaped2.txt" reason=backslash）
+  落盘：.out.pdf2md/archive-probe-backslash.zip
+  工作根里的东西（按设计）：.out.pdf2md/archive-probe-backslash.zip
+  outDir 与工作根之外的文件：无
+
+## 2 同 outDir 两条作业并行（GWB-31）：谁盖谁
+- 甲作业：done，账上 files=[full.md, images/jia.png] commit=created
+- 乙作业：拒了——CommitRejectedError: outDir 没动：C:\Users\GODAME~1\AppData\Local\Temp\mineru-fence-probe\share\out——提交这一瞬间它被占了（outDir 现在不是空的，多半是另一条作业刚落进同一个目录）：Error: EPERM: operation not permitted, rename 'C:\Users\GODAME~1\AppData\Local\Temp\mineru-fence-probe\share\.out.pdf2md\staged-yi' -> 'C:\Users\GODAME~1\AppData\Local\Temp\mineru-fence-probe\share\out'
+  最终 outDir：full.md、images/jia.png
+  最终 full.md 是谁的：# jia
+  赢家是甲作业（另一条被拒）：最终产物与它的账对得上
+
+## 3 outDir 已有产物：默认策略
+- 默认
+  拒了——CommitRejectedError: outDir 没动：C:\Users\GODAME~1\AppData\Local\Temp\mineru-fence-probe\replace\default——里面已经有 2 项东西，这条作业没带 overwrite——要覆盖就显式说（旧产物会先挪进工作根备份）
+  最终 outDir：full.md、images/old.png
+- overwrite:true
+  落了：commit=replaced backup=C:\Users\GODAME~1\AppData\Local\Temp\mineru-fence-probe\replace\.yes.pdf2md\backup-20260920063610 files=[full.md, images/new.png]
+  最终 outDir：full.md、images/new.png
+
+（完）

@@ -21,6 +21,11 @@ MinerU 转换件：提供 **pdf2md 服务**（`ctx.gwbPdf2md`）——PDF 经 Mi
   不能在线等）；作业各自独立**全并行**（一次交 N 篇就是 N 个独立任务，云端各转各的）；
   状态机 `queued→uploading→running→done|failed|interrupted`；解析中带云端进度
   （已解析页 / 总页）；作业账经 gwbData 落盘（写盘排队）、重启标 interrupted
+- **一个 outDir 一次只落一个作业**：提交时同步占位，同批撞车或撞上在跑的作业整批当场拒；
+  已有产物默认拒，要覆盖得显式 `overwrite`（旧产物先整份备份进工作根）
+- **产物整份出现**：解包前全部 entry 过围栏（盘符、`..`、反斜杠、绝对路径、真实路径逃逸一律
+  结构化拒，一条不合格整包不落盘），解进工作根 staging 后整体 rename 进 outDir；原始 zip 在
+  工作根留一份归档，解包失败/中断后 `pdf2md.recover` 凭它零云端重解
 - **设置**：`mineru` 节一枚 `token`（secret）
 - **事件**：落定时经内核 emit 通道推界面一条 `job-settled`
 
@@ -33,6 +38,7 @@ MinerU 客户端与 zip 解包沿用老仓 god-papers 的接口规格（单元 `
 pnpm install
 pnpm build          # tsc 直出 dist/
 pnpm typecheck
+pnpm test           # 单测：假 zip + 云端替身，零网络零额度
 ```
 
 进 home：`plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`（包发 gitea 个人源

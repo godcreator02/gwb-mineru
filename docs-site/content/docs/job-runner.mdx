@@ -1,31 +1,33 @@
 ---
 title: 作业机：gwbPdf2md 服务
-description: src/index.ts——submit 收数组秒回、作业各自独立全并行、作业账排队落盘、重启对账；命令与事件的脸也在这层
+description: src/index.ts——submit 收数组秒回、作业各自独立全并行、一个 outDir 一次只落一个作业、作业账排队落盘、重启对账、凭归档 recover；命令与事件的脸也在这层
 ---
 
 # 作业机：gwbPdf2md 服务
 
 **本页回答**：`src/index.ts` 管什么、不管什么；submit 怎么收一批、作业为什么各自独立跑、
-账怎么落；三个邻居服务为什么是硬依赖。
+outDir 的占用与覆盖怎么把；账怎么落；三个邻居服务为什么是硬依赖。
 
 ## 管什么
 
-作业的一生：验参落账秒回、各跑各的全链（报名 → 上传 → 轮询 → 解包）、每步推进落账、
-云端进度变了记账、终态推 UI 事件、启动对账、卸载打断。命令面 `pdf2md.*` 三条与说明书注册也在这层。
+作业的一生：验参占位秒回、各跑各的全链（报名 → 上传 → 轮询 → 下载解包）、每步推进落账、
+云端进度变了记账、终态推 UI 事件、启动对账、卸载打断、凭盘上归档重新解包。outDir 的占用与
+覆盖策略也在这一层。命令面 `pdf2md.*` 四条与说明书注册同样在这儿。
 
 ## 不知道什么
 
 - 不知道 MinerU API 长什么样——三个动作在 [云端客户端](/docs/mineru-client)
-- 不知道 zip 里有什么、markdown 怎么认——在 [解包与语言](/docs/extract)
+- 不知道 zip 里有什么、怎么防越界、怎么原子落盘——在[解包与语言](/docs/extract)
 - 不知道调用方拿产出干什么——零库概念，「归档副本、成品位命名」那套篇目录布局是调用方的
   私有约定，不在这儿
 - 不知道 token 的值——settings 给，submit 时现取
 
 ## 数据结构
 
-一条作业的账，落盘就是它——只装可序列化的东西：
+一条作业的账，落盘就是它——只装可序列化的东西。产物那几格（`markdown` / `lang` / `files` /
+`skipped`）与归档、提交结果（`archive` / `commit` / `backup`）都是 done 之后才有的：
 
-{/* ref file="../src/index.ts" lines="44-62" */}
+{/* ref file="../src/index.ts" lines="50-88" */}
 
 `state` 六态：`queued → uploading → running → done | failed | interrupted`，后三态是终态。
 `queued` 是落账到开跑之间的瞬态。`progress` 是云端报来的已解析页 / 总页，`running` 期间才会
@@ -33,8 +35,8 @@ description: src/index.ts——submit 收数组秒回、作业各自独立全并
 
 ## 提供的接口
 
-- 服务 `ctx.gwbPdf2md`：`submit` / `get` / `list`（契约见[用法](/docs/usage)）
-- 命令 `pdf2md.submit` / `pdf2md.status` / `pdf2md.jobs`
+- 服务 `ctx.gwbPdf2md`：`submit` / `recover` / `get` / `list`（契约见[用法](/docs/usage)）
+- 命令 `pdf2md.submit` / `pdf2md.status` / `pdf2md.jobs` / `pdf2md.recover`
 - 事件 `job-settled`（终态时，经内核 emit 通道）
 - 说明书目录 `skills/`（经 gwb-skills 局部注入）
 
@@ -42,40 +44,44 @@ description: src/index.ts——submit 收数组秒回、作业各自独立全并
 
 | 接口 | 用来做什么 | 生产实现 | 测试实现 |
 | --- | --- | --- | --- |
-| `gwbSettings` | define token 那格、现取 | gwb-settings 件 | 无——仓里没有单测设施 |
-| `gwbData` | 作业账 `writeDoc` / `readDoc`（文档名 `jobs`） | gwb-data 件 | 同上 |
-| `gwbCommands` | 登记三条命令 | gwb-commands 件 | 同上 |
-| `gwbSkills` | 注册说明书目录（局部、可选） | gwb-skills 件 | 同上 |
-| `gwbKernel.emit` | 终态推 `job-settled` | gwb-kernel | 同上 |
+| `gwbSettings` | define token 那格、现取 | gwb-settings 件 | 假 ctx：`tests/job-runner.test.mjs` |
+| `gwbData` | 作业账 `writeDoc` / `readDoc`（文档名 `jobs`） | gwb-data 件 | 同上（内存 Map） |
+| `gwbCommands` | 登记四条命令 | gwb-commands 件 | 同上 |
+| `gwbSkills` | 注册说明书目录（局部、可选） | gwb-skills 件 | 没装也不挂 |
+| `gwbKernel.emit` | 终态推 `job-settled` | gwb-kernel | 同上（收进数组） |
 
 三个邻居服务走 `static inject` 硬依赖，缺谁这个件不挂——比挂上之后半身不遂好查。类字段存
 引用跨不到消费者扩展，所以用的时候一律 `this.own.<服务>` 现取（那晚的修理与翻案见
 [那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）：
 
-{/* ref file="../src/index.ts" lines="106-115" */}
+{/* ref file="../src/index.ts" lines="149-157" */}
 
 skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 
-{/* ref file="../src/index.ts" lines="183-186" */}
+{/* ref file="../src/index.ts" lines="244-247" */}
 
 ## 怎么单独测
 
-仓里没有单测设施，现状两条：`pnpm typecheck` 守类型；真链路进隔离 home 实跑（要真 token、
-真云端——`devkit.home.new` 开 home、`plugin-manager.install` 装件、`devkit.dev` 换开发版、
-`settings.set` 填 token）。实跑记录：全链与进度在 `probes/2609172224_poll-and-live-run/`，
-数组并行提交在 `probes/2609181525_parallel-submit/`（一次交 3 篇、同时在跑峰值 3、坏路径
-整批拒）；批与并行的云端行为判据在 `probes/2609181430_batch-parallel/`。
+`pnpm test`（先 `pnpm build`，再 `node --test "tests/*.test.mjs"`）。打这一层的是
+`tests/job-runner.test.mjs`：真 cordis Context + 三个假邻居服务（settings / data / commands）+
+假内核，云端是替身 fetch（报名、PUT、轮询、下载四个动作全在内存里，零网络零额度），PDF 是随手
+写的假文件。它证明四件事：一条作业的全链与回执字段；同一 outDir 的三种把法（同批撞车、
+前一条在跑、前一条已 done 但目录非空）；显式覆盖时旧产物整份进备份；提交点撞车后
+`pdf2md.recover` 凭归档补上且**云端一次都没再问**。
+
 能单测的两块被刻意切在服务外面——云端客户端与解包都是纯函数模块，不欠 cordis，
 这正是依赖方向单向的回报。
 
 ## 代码地图
 
 - **在哪**：`src/index.ts`，一个文件
-- **先读**：文件头注释（14–32 行，自我介绍）→ `submit`（193 行）→ `start`（235 行）→ `run`（243 行）
-- **读序**：`[Service.init]`（登记命令与设置、启动对账）→ `submit`（整批验参、落账、逐条点火）→
-  `start`（包一层兜底收尾）→ `run`（一条作业的全链）→ `noteProgress`（进度记账）→
-  `finish`（状态推进 + 终态 emit）→ `persist` / `load`（账的排队写与对账）
-- **可跳过**：`dist/`（tsc 产物）、`describeError`（把 `cause` 拼进失败原因的几行）
+- **先读**：文件头注释（14–35 行，自我介绍与 outDir 那条线）→ `submit`（262 行）→ `run`（419 行）→ `recover`（341 行）
+- **读序**：`[Service.init]`（登记命令与设置、启动对账）→ `submit`（整批验参、占位、落账、逐条点火）→
+  `start`（包一层兜底收尾）→ `run`（一条作业的全链）→ `extract`（下载解包那一段与失败时的归档记账）→
+  `recover`（凭归档重解）→ `noteProgress`（进度记账）→ `finish`（状态推进 + 终态 emit）→
+  `persist` / `load`（账的排队写与对账）
+- **可跳过**：`dist/`（tsc 产物）、`describeError`（把 `cause` 拼进失败原因的几行）、
+  `extractOptions` / `extractReceipt`（一个作业记录摊成解包参数、再摊回来）
 
 ## 设计点（错了难改的那几条）
 
@@ -83,28 +89,48 @@ skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 作业号数组先回，成败看 status。秒回的边界在「云端」：本地验参与**把 queued 落进作业账**
 仍在线等（毫秒级）——回了作业号就是「跨重启查得到」的承诺，账落不了盘整批拒、撤回入列：
 
-{/* ref file="../src/index.ts" lines="15-21" */}
+{/* ref file="../src/index.ts" lines="14-17" */}
+
+**一个 outDir 一次只落一个作业**：占位发生在**第一个 await 之前**（两个并发 submit 不能都验到
+「这个 outDir 空着」），占位失败整批当场拒、一条账都不落、云端一次都不问。同批里两条瞄着同一个
+目录、或撞上还在跑的作业，报的话分别说清是哪种，并点名是谁占着。到终态就放掉这一格：
+下一份产物可以进来，那一关归「已有产物」管：
+
+{/* ref file="../src/index.ts" lines="262-333" */}
+
+**已有产物要显式覆盖**：outDir 不是目录、或里面已经有东西而这条没带 `overwrite`——提交阶段就拒
+（不排一条注定在提交点失败的作业）；提交点还会再查一遍，那才是权威的（本地验完到云端跑完隔着
+分钟级，中间谁都可能往里放东西）。覆盖时旧产物整份进工作根备份，作业账上记 `commit` 与
+`backup`，回执里说得清这次是什么结果：
+
+{/* ref file="../src/index.ts" lines="388-407" */}
 
 **作业各自独立、全并行，不聚合进一个云端批**：一次 submit 的 N 篇就是 N 个独立的单文件任务，
 报名、上传、轮询、下载各跑各的，谁先完谁先落账。两件事都有实测背书——云端对并发单任务
 零挑剔（5 路全并发 5/5 过），而把多文件**聚合进一个 batch_id** 会连带解析失败（同样的文件
 聚合 3/3 挂、拆开 2/2 过），判据见[那张卡](/trajectory/2026-09-18-parallel-and-serial-overturned)：
 
-{/* ref file="../src/index.ts" lines="194-230" */}
+{/* ref file="../src/index.ts" lines="409-417" */}
 
-{/* ref file="../src/index.ts" lines="246-254" */}
+**失败只管记账，重解包那扇门在本地**：解包那一段失败（围栏拒、提交点撞车、盘上 I/O）时，作业落
+`failed` 并**把归档路径记进账**——云端那份结果已经在盘上了，`pdf2md.recover` 凭它重走一遍解包链，
+不重新报名、不上传、不轮询、不再花额度。没走到下载就失败的（云端解析失败、轮询超时）账上没有
+归档，recover 会直说无路可走。**两件事都不动六态的含义**：recover 是把本地没走完的那一步走完，
+不是对云端的重试：
+
+{/* ref file="../src/index.ts" lines="341-372" */}
 
 **作业账写盘排队**：进度、状态推进、新作业入账都会触发写盘，多作业并行推进时同一个 `jobs`
 文档并发 rename 在 Windows 上 `EPERM` / `ENOENT`。写盘挂到一条链上，每次写轮到那一刻的整张账——
 这是并行世界里唯一保留下来的串行：
 
-{/* ref file="../src/index.ts" lines="324-338" */}
+{/* ref file="../src/index.ts" lines="503-516" */}
 
 **失败原因带上 cause**：`fetch` 失败时 `String(err)` 只有一句 `TypeError: fetch failed`，
 真原因（`ECONNRESET`、连接超时）在 `err.cause` 里——拼进作业的 `error` 与日志。mineru.net 的
 连接偶发抖动与并发无关（单发也撞、重试即过），防护靠如实记账，不靠限流：
 
-{/* ref file="../src/index.ts" lines="97-104" */}
+{/* ref file="../src/index.ts" lines="139-147" */}
 
 **作业的命脉挂提供方，不挂消费者**：方法里的 `this.ctx` 是消费者的——定时器、落账、收尾
 全挂 `this.own`，消费者卸载不该带走一个还在跑的转换（上面「依赖的接口」那段钉过）。
@@ -113,19 +139,19 @@ skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 （理由写进 error），件卸载时 abort 还在跑的控制器、把非终态一并标上——不丢账、不假装还在跑，
 也**不**自动重提：
 
-{/* ref file="../src/index.ts" lines="340-362" */}
+{/* ref file="../src/index.ts" lines="518-540" */}
 
 **进度只记账，不推事件**：轮询每 5 秒一问，云端报的页数变了才写盘，没变不写；界面事件仍只有
 落定那一条 `job-settled`——看进度的人查 status，件不把每一轮回包转发成事件：
 
-{/* ref file="../src/index.ts" lines="293-303" */}
+{/* ref file="../src/index.ts" lines="470-479" */}
 
 **轮询的三个数定在这层**：5 秒一问、云端干活时进度停滞 10 分钟判失败、连云端排队总上限
 1 小时。怎么判停滞在[云端客户端](/docs/mineru-client)；数值是作业机的取舍——长文档与低优先级
 排队不该被墙钟误杀（误杀的代价是调用方重提、同一份页数再扣一次额度），卡死的也不该无限等。
 作业各跑各的，谁也不占谁的轮询上限：
 
-{/* ref file="../src/index.ts" lines="39-42" */}
+{/* ref file="../src/index.ts" lines="43-46" */}
 
 **设置项必须在 init 里 define**：不声明的话 get 永远回 undefined——实机撞过一轮，症状是
 「token 明明在 settings.json 里，命令却报没配」（见[那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）。

@@ -1,0 +1,55 @@
+$ pnpm build && node --test "tests/*.test.mjs"
+$ tsc -p tsconfig.json
+▶ 围栏：一条不合格就整包不落盘
+  ✔ ../ 段（"images/../../zip-escaped.txt"）被拒，且 outDir 与外面都不落东西 (46.9021ms)
+  ✔ 反斜杠（"images/..\\..\\zip-escaped2.txt"）被拒，且 outDir 与外面都不落东西 (9.7959ms)
+  ✔ 盘符（"C:/zip-escaped3.txt"）被拒，且 outDir 与外面都不落东西 (8.5126ms)
+  ✔ 绝对路径（"/zip-escaped4.txt"）被拒，且 outDir 与外面都不落东西 (9.5419ms)
+  ✔ NTFS 备用数据流（"images/ok.png:evil"）被拒，且 outDir 与外面都不落东西 (8.1622ms)
+  ✔ 控制字符（"images/ok\u0000.png"）被拒，且 outDir 与外面都不落东西 (9.1964ms)
+  ✔ 归一后一个路径段都不剩（"."）被拒，且 outDir 与外面都不落东西 (8.657ms)
+  ✔ 一条坏的不许把前面的好条目带进去：整包零落盘 (9.2717ms)
+  ✔ 两条 entry 归一后同一个落点：拒 (6.4241ms)
+✔ 围栏：一条不合格就整包不落盘 (117.8257ms)
+▶ 白名单与产出
+  ✔ 只搬根下 markdown 与 images/ 子树；杂项列进 skipped，不静默丢 (16.8128ms)
+  ✔ markdown 不在 zip 根下：拒（不猜、不静默） (7.2979ms)
+  ✔ 中文占比判 zh、英文占比判 en（老口径不变） (0.2461ms)
+✔ 白名单与产出 (24.6157ms)
+▶ 提交点：已有产物默认拒、显式 overwrite 才覆盖
+  ✔ 没带 overwrite：拒，outDir 一个字节没动 (26.6045ms)
+  ✔ 带 overwrite：旧产物整体进备份、新版整份落位 (22.8699ms)
+  ✔ outDir 是个文件：拒 (13.9232ms)
+✔ 提交点：已有产物默认拒、显式 overwrite 才覆盖 (63.8124ms)
+▶ 并发：同 outDir 两条作业，一条落成、一条显式拒
+  ✔ 两条并排解同一个 outDir：不许静默互盖 (32.624ms)
+✔ 并发：同 outDir 两条作业，一条落成、一条显式拒 (32.8384ms)
+▶ 归档：解包失败/中断后凭它重新解包，不必再问云端
+  ✔ 归档落盘后，零网络再解一遍能补齐产物 (38.7258ms)
+  ✔ 围栏拒了也留着归档：错在归档本身，重解一次还是同样的拒 (14.0901ms)
+✔ 归档：解包失败/中断后凭它重新解包，不必再问云端 (53.1655ms)
+▶ 一条作业的全链（云端替身）
+  ✔ done 的账里有 commit / archive / files / skipped，产物整份在 outDir (52.6146ms)
+  ✔ 归档里的越界条目让作业 failed，且 outDir 外面不落东西 (33.7896ms)
+✔ 一条作业的全链（云端替身） (87.4849ms)
+▶ 一个 outDir 一次只落一个作业
+  ✔ 同批两条瞄着同一个 outDir：整批当场拒，账上零条、云端零调用 (3.5239ms)
+  ✔ 前一条还在跑，后一条瞄同一个 outDir：拒，并点名是谁占着 (53.6013ms)
+  ✔ 前一条 done 之后，同 outDir 没带 overwrite：拒（差在已有产物，不在占用） (34.5753ms)
+✔ 一个 outDir 一次只落一个作业 (92.2798ms)
+▶ 覆盖已有产物要显式说
+  ✔ 带 overwrite：旧产物整份进备份，新产物落位，账上写 replaced (44.9128ms)
+✔ 覆盖已有产物要显式说 (45.2565ms)
+▶ 提交点撞车与 recover：不必再花云端额度
+  ✔ 云端跑的这几分钟里 outDir 被塞了东西：提交点拒 → failed 且账上有归档 → 清场后 recover 补上 (87.5551ms)
+  ✔ recover 的守卫：done 的、在跑的、账上没有归档的，都拒 (51.7475ms)
+  ✔ 云端解析失败（没下载过 zip）的作业：recover 说清没有归档，重提才有结果 (23.861ms)
+✔ 提交点撞车与 recover：不必再花云端额度 (163.5607ms)
+ℹ tests 27
+ℹ suites 9
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 621.6526

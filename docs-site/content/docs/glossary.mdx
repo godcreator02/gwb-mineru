@@ -17,6 +17,12 @@ description: 这个件造的词、gwb 线的词在这儿有特定含义的——
 | **状态机六态** | `queued → uploading → running → done \| failed \| interrupted`；后三个是终态，到任一不再变化 |
 | **并行** | 作业各自独立、同时开跑：一次交 N 篇就是 N 个独立的单文件任务，云端各转各的，互不排队。判据见[作业机](/docs/job-runner) |
 | **作业账** | 作业记录的落盘副本，经 gwbData 存进文档 `jobs`。重启后靠它对账 |
+| **工作根** | outDir 同级的 `.<outDir 名>.pdf2md/`：归档、staging、备份都住这儿。**不在 outDir 里**——产出目录要干净，整份提交也才成立。调用方随时可整个删（在跑的作业除外）。见[解包与语言](/docs/extract) |
+| **归档** | 结果 zip 的落盘副本（工作根里 `archive-<作业号>.zip`）。解包失败/中断后凭它重新解包，不必再花一次云端额度；作业账的 `archive` 记着路径 |
+| **围栏** | 解包前对全部 entry 的统一校验：白名单只有根下 markdown 与严格 `images/` 子树，盘符/冒号、绝对路径、`..` 段、反斜杠、控制字符与真实路径逃逸一律拒。一条不合格整包不落盘。见[解包与语言](/docs/extract) |
+| **提交点** | staging 整体 rename 进 outDir 的那一步：产物要么上一版、要么完整新版。outDir 已有产物默认拒，显式 `overwrite` 才把旧的挪进备份再上新的 |
+| **`overwrite`** | 提交里每一项上的显式开关：outDir 里已有产物时，`true` 才覆盖（旧产物先整份进 `backup-<时间戳>/`）。默认拒 |
+| **`pdf2md.recover`** | 凭作业盘上那份归档重新解包进它的 outDir：零云端、零额度。只对 failed / interrupted 且账上有归档的作业有效。见[用法](/docs/usage) |
 | **进度**（`progress`） | 云端解析中报来的已解析页 / 总页，记在作业上；排队时没有，done 时补满。只记账，不推事件 |
 | **停滞** | 云端在解析（running / converting）而状态与已解析页数一段时间都不动——作业按 failed 结算。排队不算停滞，只受总上限管。见[云端客户端](/docs/mineru-client) |
 | **interrupted** | 宿主重启或件卸载打断的作业——账如实标注，不自动重跑；处置是重提一次。见[用法](/docs/usage)坑三条 |

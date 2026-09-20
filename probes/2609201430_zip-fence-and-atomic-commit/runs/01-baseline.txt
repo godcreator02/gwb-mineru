@@ -1,0 +1,30 @@
+# 解包围栏 / 同 outDir 并发 —— 探针
+模块：..\..\node_modules\.baseline\extract.js
+
+## 1 越界写（GWB-30）：归档里塞 ../ 与反斜杠变体
+- 正斜杠 "images/../../zip-escaped.txt"
+  没拒——交出 files=[full.md, images/../../zip-escaped.txt, images/ok.png]
+  落盘：out/full.md、out/images/ok.png、zip-escaped.txt
+  工作根里的东西（按设计）：无
+  outDir 与工作根之外的文件：zip-escaped.txt  ← 越界了
+- 反斜杠 "images/..\\..\\zip-escaped2.txt"
+  没拒——交出 files=[full.md, images/..\..\zip-escaped2.txt, images/ok.png]
+  落盘：out/full.md、out/images/ok.png、zip-escaped2.txt
+  工作根里的东西（按设计）：无
+  outDir 与工作根之外的文件：zip-escaped2.txt  ← 越界了
+
+## 2 同 outDir 两条作业并行（GWB-31）：谁盖谁
+- 甲作业：done，账上 files=[full.md, images/jia.png] commit=undefined
+- 乙作业：done，账上 files=[full.md, images/yi.png] commit=undefined
+  最终 outDir：full.md、images/jia.png、images/yi.png
+  最终 full.md 是谁的：# yi
+  两条都声称落成了：outDir 只能有一份产物，必有人的账已经不准
+
+## 3 outDir 已有产物：默认策略
+- 默认
+  落了：commit=undefined backup=undefined files=[full.md, images/new.png]
+  最终 outDir：full.md、images/new.png、images/old.png
+- overwrite:true
+  落了：commit=undefined backup=undefined files=[full.md, images/new.png]
+  最终 outDir：full.md、images/new.png、images/old.png
+
