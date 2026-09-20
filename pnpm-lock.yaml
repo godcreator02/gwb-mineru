@@ -13,20 +13,20 @@ importers:
         version: 0.5.18
     devDependencies:
       '@godcreator/gwb-commands':
-        specifier: 0.4.3
-        version: 0.4.3(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))
+        specifier: 0.4.5
+        version: 0.4.5(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))
       '@godcreator/gwb-data':
-        specifier: 0.1.2
-        version: 0.1.2(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)
+        specifier: 0.1.5
+        version: 0.1.5(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)
       '@godcreator/gwb-plugin-api':
         specifier: 0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-settings':
-        specifier: 0.2.1
-        version: 0.2.1(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)
+        specifier: 0.3.1
+        version: 0.3.1(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)
       '@godcreator/gwb-skills':
-        specifier: 0.4.1
-        version: 0.4.1(@godcreator/gwb-commands@0.4.3(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9)))(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)
+        specifier: 0.4.3
+        version: 0.4.3(@godcreator/gwb-commands@0.4.5(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9)))(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)
       '@types/adm-zip':
         specifier: ^0.5.7
         version: 0.5.8
@@ -42,13 +42,13 @@ importers:
 
 packages:
 
-  '@godcreator/gwb-commands@0.4.3':
-    resolution: {integrity: sha512-YgdCTW2+RHclPk2dOjO3r/rI6uUKwFQsh8wpf1A3oyS3d38bdU3+YO9QYJd7oJaLZgNZH6dPDtGeCfcVLkghdw==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-commands/-/0.4.3/gwb-commands-0.4.3.tgz}
+  '@godcreator/gwb-commands@0.4.5':
+    resolution: {integrity: sha512-uTINd89KuCrdhTUfBiruKOFdb7FOASl2ycL2p+H5CZWIxZLTCD2YQI6AgA4ZhUox5ZynDuKBycpmPNctgITCCw==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-commands/-/0.4.5/gwb-commands-0.4.5.tgz}
     peerDependencies:
       '@godcreator/gwb-plugin-api': ^0.1.2
 
-  '@godcreator/gwb-data@0.1.2':
-    resolution: {integrity: sha512-fNYtuYFJJkPsHOUcABBf/CYdYegamHkMUVLDwTBwKTOCVQmb6dNrVLOXL9Q+pXi1+RQSjW092LykBChgiiGJIQ==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-data/-/0.1.2/gwb-data-0.1.2.tgz}
+  '@godcreator/gwb-data@0.1.5':
+    resolution: {integrity: sha512-DIPvq9JlO2d5R37Fd5S+TyTjZlL0mRokFfS2E7XGRGsyonC2wJBwLP6f0eTp8HBBrWvgXyCskDk8o2gYbfDkKA==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-data/-/0.1.5/gwb-data-0.1.5.tgz}
     peerDependencies:
       '@godcreator/gwb-plugin-api': ^0.1.2
       cordis: ^4.0.0-rc.9
@@ -58,16 +58,16 @@ packages:
     peerDependencies:
       cordis: ^4.0.0-rc.9
 
-  '@godcreator/gwb-settings@0.2.1':
-    resolution: {integrity: sha512-pkOCMkLpQAy1kmhoSFvDoRGj1qsetMdwmsj0g/hOb0dk8eF7/Gb8eimxaOlkxSxkVuX4Ra44SrbYJZ74yNfilw==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-settings/-/0.2.1/gwb-settings-0.2.1.tgz}
+  '@godcreator/gwb-settings@0.3.1':
+    resolution: {integrity: sha512-+4heT/ao4QDRlAEWI58Uphyp8A1ojRUbgMcgbH0lcz1x67IKT6KyCG4gLoWPpwWFfNNOYZgnQMf9hS62yVd7MA==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-settings/-/0.3.1/gwb-settings-0.3.1.tgz}
     peerDependencies:
       '@godcreator/gwb-plugin-api': ^0.1.2
       cordis: ^4.0.0-rc.9
 
-  '@godcreator/gwb-skills@0.4.1':
-    resolution: {integrity: sha512-SbtzC8lnU9HoGKAHQRrvAvVYsEtuWEA0eJapr9VjuUKVBijP6a5SBSnH5zQFplZ9GjJL/bq6SiMZoWuIvvLz1A==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-skills/-/0.4.1/gwb-skills-0.4.1.tgz}
+  '@godcreator/gwb-skills@0.4.3':
+    resolution: {integrity: sha512-Z3L5JRsCjXrHnukNTcXBhQPZMS6BkcX65CRcarJb89jLhM07mlrMyvchmuqnCFWr/iSqewLPqvYmBZmsxmNA+g==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-skills/-/0.4.3/gwb-skills-0.4.3.tgz}
     peerDependencies:
-      '@godcreator/gwb-commands': ^0.4.3
+      '@godcreator/gwb-commands': ^0.4.5
       '@godcreator/gwb-plugin-api': ^0.1.2
       cordis: ^4.0.0-rc.9
 
@@ -229,11 +229,11 @@ packages:
 
 snapshots:
 
-  '@godcreator/gwb-commands@0.4.3(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))':
+  '@godcreator/gwb-commands@0.4.5(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))':
     dependencies:
       '@godcreator/gwb-plugin-api': 0.1.2(cordis@4.0.0-rc.9)
 
-  '@godcreator/gwb-data@0.1.2(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)':
+  '@godcreator/gwb-data@0.1.5(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)':
     dependencies:
       '@godcreator/gwb-plugin-api': 0.1.2(cordis@4.0.0-rc.9)
       cordis: 4.0.0-rc.9
@@ -242,14 +242,14 @@ snapshots:
     dependencies:
       cordis: 4.0.0-rc.9
 
-  '@godcreator/gwb-settings@0.2.1(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)':
+  '@godcreator/gwb-settings@0.3.1(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)':
     dependencies:
       '@godcreator/gwb-plugin-api': 0.1.2(cordis@4.0.0-rc.9)
       cordis: 4.0.0-rc.9
 
-  '@godcreator/gwb-skills@0.4.1(@godcreator/gwb-commands@0.4.3(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9)))(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)':
+  '@godcreator/gwb-skills@0.4.3(@godcreator/gwb-commands@0.4.5(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9)))(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))(cordis@4.0.0-rc.9)':
     dependencies:
-      '@godcreator/gwb-commands': 0.4.3(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))
+      '@godcreator/gwb-commands': 0.4.5(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9))
       '@godcreator/gwb-plugin-api': 0.1.2(cordis@4.0.0-rc.9)
       cordis: 4.0.0-rc.9
 

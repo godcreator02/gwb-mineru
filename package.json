@@ -41,11 +41,11 @@
     "adm-zip": "^0.5.18"
   },
   "devDependencies": {
-    "@godcreator/gwb-commands": "0.4.3",
-    "@godcreator/gwb-data": "0.1.2",
+    "@godcreator/gwb-commands": "0.4.5",
+    "@godcreator/gwb-data": "0.1.5",
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-settings": "0.2.1",
-    "@godcreator/gwb-skills": "0.4.1",
+    "@godcreator/gwb-settings": "0.3.1",
+    "@godcreator/gwb-skills": "0.4.3",
     "@types/adm-zip": "^0.5.7",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.9",
