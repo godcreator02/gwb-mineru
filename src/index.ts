@@ -120,6 +120,10 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
   private jobSeq = 0
   /** 作业账写盘一个接一个：同一个文件并发 rename，Windows 上会 EPERM */
   private saving: Promise<void> = Promise.resolve()
+  /** 最近一次落盘的失败；写成了清空。submit 靠它兑现「账落不了盘整批拒」 */
+  private lastPersistError: unknown = undefined
+  /** 启动对账那一次。submit 先等它——不等的话首笔账可能赶在旧账载入前落盘，把旧账冲掉 */
+  private loadPromise: Promise<void> = Promise.resolve()
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbPdf2md')
@@ -181,14 +185,17 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
       scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
     })
 
-    // 启动对账：上一次运行留下的非终态作业，如今没人再轮询了
-    void this.load().catch(() => undefined)
+    // 启动对账：上一次运行留下的非终态作业，如今没人再轮询了。promise 存下来给
+    // submit 当门槛——旧账没对完之前收新作业，首笔落账会把还没载入的旧账冲掉
+    this.loadPromise = this.load().catch(() => undefined)
     this.info('mineru 作业机就绪（ctx.gwbPdf2md，件 gwb-mineru）')
   }
 
   /**
    * 提交一批转换作业。验完全部、落完账才返回——**返回不是完成**，作业各自独立、同时开跑。
-   * 传坏形状（路径不是绝对、文件不存在、超 200MB、token 没配）整批当场拒，不落半批账
+   * 传坏形状（路径不是绝对、文件不存在、超 200MB、token 没配）整批当场拒，不落半批账；
+   * 账落不了盘也整批拒并撤回入列——回了作业号就是「跨重启查得到」的承诺，兑现不了就别回。
+   * 这里的同步段只有本地验证与一次落账（毫秒级）——「秒回」约束挡的是分钟级云端解析，不冲突
    */
   async submit(files: readonly Pdf2mdSubmitInput[]): Promise<Pdf2mdJob[]> {
     if (!Array.isArray(files) || files.length === 0) throw new Error('submit 要 files: [{ input, outDir }, …] 非空数组')
@@ -202,6 +209,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
       if (fileStat.size > MAX_FILE_BYTES) throw new Error(`input 超过 MinerU 单文件上限 200MB，拆小了再提：${one.input}`)
     }
     await Promise.all([...new Set(files.map((f) => f.outDir))].map((outDir) => mkdir(outDir, { recursive: true })))
+    await this.loadPromise
 
     const at = nowIso()
     const jobs = files.map((one) => {
@@ -211,7 +219,12 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
       this.info(`作业 ${id} 入列：${path.basename(one.input)} → ${one.outDir}`)
       return job
     })
-    void this.persist()
+    await this.persist()
+    if (this.lastPersistError !== undefined) {
+      // 撤账再拒：内存账当场干净。盘上多写的几条 queued 无人开跑，重启对账会标 interrupted
+      for (const job of jobs) this.table.delete(job.id)
+      throw new Error(`作业账落不了盘，这批不收（重试前先看数据盘）：${describeError(this.lastPersistError)}`)
+    }
     for (const job of jobs) this.start(job, token)
     return jobs
   }
@@ -288,13 +301,13 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     void this.persist()
   }
 
-  /** 状态推进 + 落账。终态时往界面推一条事件（走内核那条 emit 通道，载荷自带 source） */
+  /** 状态推进 + 落账。终态事件在**账落盘之后**才发——事件说「完成了」，账就得已经写上 */
   private async finish(id: string, state: JobState, extra?: Partial<Pdf2mdJob>, error?: string): Promise<void> {
     const prev = this.table.get(id)
     if (prev === undefined) return
     const next: Pdf2mdJob = { ...prev, ...extra, state, updatedAt: nowIso(), ...(error !== undefined ? { error } : {}) }
     this.table.set(id, next)
-    void this.persist()
+    await this.persist()
     if (state === 'done' || state === 'failed') {
       requireKernel(this.own).emit({
         source: PLUGIN_NAME,
@@ -308,12 +321,15 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     }
   }
 
-  /** 作业账落盘，排队写：每次写的是轮到那一刻的整张账 */
+  /** 作业账落盘，排队写：每次写的是轮到那一刻的整张账。失败不抛（后台链还在跑），
+   *  记进 lastPersistError 给 submit 当拒收依据 */
   private persist(): Promise<void> {
     this.saving = this.saving.then(async () => {
       try {
         await this.own.gwbData?.writeDoc(JOBS_DOC, { jobs: this.list() })
+        this.lastPersistError = undefined
       } catch (err: unknown) {
+        this.lastPersistError = err
         this.warn(`作业账落盘失败（继续在内存里跑）：${String(err)}`)
       }
     })
@@ -338,7 +354,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     }
     if (changed) {
       this.info(`启动对账：${String(this.table.size)} 条作业入账，其中非终态已标 interrupted`)
-      void this.persist()
+      await this.persist()
     } else if (this.table.size > 0) {
       this.info(`启动对账：${String(this.table.size)} 条作业入账`)
     }
