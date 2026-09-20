@@ -56,7 +56,7 @@ description: src/index.ts——submit 收数组秒回、作业各自独立全并
 
 skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 
-{/* ref file="../src/index.ts" lines="179-182" */}
+{/* ref file="../src/index.ts" lines="183-186" */}
 
 ## 怎么单独测
 
@@ -90,15 +90,15 @@ skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 零挑剔（5 路全并发 5/5 过），而把多文件**聚合进一个 batch_id** 会连带解析失败（同样的文件
 聚合 3/3 挂、拆开 2/2 过），判据见[那张卡](/trajectory/2026-09-18-parallel-and-serial-overturned)：
 
-{/* ref file="../src/index.ts" lines="189-217" */}
+{/* ref file="../src/index.ts" lines="194-230" */}
 
-{/* ref file="../src/index.ts" lines="233-241" */}
+{/* ref file="../src/index.ts" lines="246-254" */}
 
 **作业账写盘排队**：进度、状态推进、新作业入账都会触发写盘，多作业并行推进时同一个 `jobs`
 文档并发 rename 在 Windows 上 `EPERM` / `ENOENT`。写盘挂到一条链上，每次写轮到那一刻的整张账——
 这是并行世界里唯一保留下来的串行：
 
-{/* ref file="../src/index.ts" lines="311-322" */}
+{/* ref file="../src/index.ts" lines="324-338" */}
 
 **失败原因带上 cause**：`fetch` 失败时 `String(err)` 只有一句 `TypeError: fetch failed`，
 真原因（`ECONNRESET`、连接超时）在 `err.cause` 里——拼进作业的 `error` 与日志。mineru.net 的
@@ -113,12 +113,12 @@ skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 （理由写进 error），件卸载时 abort 还在跑的控制器、把非终态一并标上——不丢账、不假装还在跑，
 也**不**自动重提：
 
-{/* ref file="../src/index.ts" lines="324-346" */}
+{/* ref file="../src/index.ts" lines="340-362" */}
 
 **进度只记账，不推事件**：轮询每 5 秒一问，云端报的页数变了才写盘，没变不写；界面事件仍只有
 落定那一条 `job-settled`——看进度的人查 status，件不把每一轮回包转发成事件：
 
-{/* ref file="../src/index.ts" lines="280-290" */}
+{/* ref file="../src/index.ts" lines="293-303" */}
 
 **轮询的三个数定在这层**：5 秒一问、云端干活时进度停滞 10 分钟判失败、连云端排队总上限
 1 小时。怎么判停滞在[云端客户端](/docs/mineru-client)；数值是作业机的取舍——长文档与低优先级
