@@ -1,0 +1,19 @@
+---
+born-at: 2026-09-24T18:50
+type: choice
+parent: [2026-09-08-gwb-mineru]
+label: 打包 adm-zip
+domain: 依赖与发版
+---
+
+## 背景
+
+default 里 0.6.0 起不来（条目 `active: false`），日志是 `SyntaxError: The requested module '@godcreator/gwb-plugin-api' does not provide an export named 'isRecord'`：`src/index.ts` 从词汇表包按值 import 了 `isRecord` 与 `requireKernel`，而词汇表包 0.2.7 起只有类型、这两个函数已经删掉，home 根上装的是 0.4.1。同时要迁到内核 0.4 的依赖写法：peer 只能写 `cordis` 与内核包，构建产物里的包名 import 只能是 node 内置模块、electron、cordis。0.6.0 的 `adm-zip` 写在 `dependencies`，产物里留着 `import AdmZip from 'adm-zip'`，发版前检查会拒。
+
+## 结论与边界
+
+`isRecord` 与 `requireKernel` 由插件自带一份（`src/vocab.ts`，照 devkit 的写法），词汇表包改成 `import type`。`adm-zip` 是纯 js 库，按「本插件运行时自己用的库打包进产物」处理，挪到 dev：构建拆成两步，tsc 只输出类型声明（`tsconfig.build.json`），`build.ts` 用 esbuild 输出 js。三个入口（`src/index.ts`、`src/core/extract.ts`、`src/core/mineru.ts`）开 `splitting`，共用代码进 `dist/chunks/`，`tests/` 照旧分别 import `dist/index.js` 与 `dist/core/extract.js`，拿到的是同一份类。adm-zip 是 CommonJS、内部 require node 内置模块，ESM 产物里没有 `require`，用 banner 从 `node:module` 的 `createRequire` 补上。
+
+没选的两条：把 adm-zip 留在 `dependencies`——规矩只给「打包不进产物」的库（原生可执行文件、按路径读自己文件的包）留这条路，adm-zip 打得进去；只打一个 `dist/index.js`——`tests/extract.test.mjs` 要单独 import 解包模块，改测试入口不在这次范围里。
+
+peer 写 `cordis`（`GwbMineru extends Service`，产物按值 import）与内核包 `^0.4.1`；版本号沿用已提交未发的 0.6.1（修起不来的 bug、改依赖写法与构建方式，按 gwb-release 升 y）。仓根单包布局（`devkit.audit-structure` 的 info 建议迁成 workspace）这次没动。

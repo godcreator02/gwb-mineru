@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "MinerU 转换件：提供 pdf2md 服务——PDF 经 MinerU 云端转 markdown，作业模式绕开总线 120s 红线（submit 秒回、后台跑完落盘）；token 凭据住 mineru 设置节。服务 gwbPdf2md；skill 1 份；命令 4 条。",
+  "description": "PDF 转 markdown 插件：提供 gwbPdf2md 服务与 pdf2md.* 命令，把 PDF 交给 MinerU 云端解析，提交后立即返回作业号，结果在后台落进调用方给的目录。",
   "type": "module",
   "repository": {
     "type": "git",
@@ -32,29 +32,33 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "//build": "两步：tsc 只输出类型声明（tsconfig.build.json），esbuild 输出 node 侧 js 并把 adm-zip 打包进去（build.ts）",
+    "build": "tsc -p tsconfig.build.json && node build.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm build && node --test \"tests/*.test.mjs\"",
+    "check": "pnpm run typecheck && pnpm run test",
     "prepublishOnly": "pnpm build"
   },
   "engines": {
     "node": ">=24"
   },
+  "//peerDependencies": "构建产物按值 import cordis（服务类继承 cordis 的 Service），所以 peer 写 cordis；内核包的 ^ 范围就是这个插件兼容哪个内核。规矩见 devkit 文档站「依赖怎么写」与「兼容哪个内核」",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.1.2"
+    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "cordis": "^4.0.0-rc.10"
   },
-  "dependencies": {
-    "adm-zip": "^0.5.18"
-  },
+  "//devDependencies": "命令总线、数据、设置、说明书四个插件与词汇表包只取类型，运行时经 inject 使用；adm-zip 由 esbuild 打包进构建产物，产物里不留它的包名 import；cordis 再写一份给本地构建、类型检查与测试",
   "devDependencies": {
-    "@godcreator/gwb-commands": "0.4.5",
-    "@godcreator/gwb-data": "0.1.5",
-    "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-settings": "0.3.1",
-    "@godcreator/gwb-skills": "0.4.3",
+    "@godcreator/gwb-commands": "^0.4.6",
+    "@godcreator/gwb-data": "^0.1.6",
+    "@godcreator/gwb-plugin-api": "^0.4.1",
+    "@godcreator/gwb-settings": "^0.3.2",
+    "@godcreator/gwb-skills": "^0.4.4",
     "@types/adm-zip": "^0.5.7",
     "@types/node": "^24.0.0",
-    "cordis": "4.0.0-rc.9",
+    "adm-zip": "^0.5.18",
+    "cordis": "4.0.0-rc.10",
+    "esbuild": "^0.27.0",
     "typescript": "^7.0.2"
   },
   "keywords": ["gwb", "gwb-plugin"]

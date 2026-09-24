@@ -1,15 +1,15 @@
 # gwb-mineru
 
-gwb 内核线（单元 `26090705ymz`）的 MinerU 转换件：`pdf2md` 服务（`ctx.gwbPdf2md`），
-PDF 经 MinerU 云端转 markdown。**件名是引擎（gwb-mineru）、服务与命令是功能（pdf2md.\*），
+gwb 内核线（单元 `26090705ymz`）的 MinerU 转换插件：`pdf2md` 服务（`ctx.gwbPdf2md`），
+PDF 经 MinerU 云端转 markdown。**插件名是引擎（gwb-mineru）、服务与命令是功能（pdf2md.\*），
 名不对应是有意例外**——消费方 inject 的永远是 `gwbPdf2md`。零库概念：输入 PDF 绝对路径
-与输出目录，产出 markdown + `images/`；不认识 papers（它在代码里局部注入本件）。
+与输出目录，产出 markdown + `images/`；不认识 papers（它在代码里局部注入本插件）。
 
 ## 怎么跑
 
 ```powershell
-pnpm install && pnpm build && pnpm typecheck   # 门禁：build + typecheck，绿了才提交
-pnpm test                                      # 单测：先 build，再 node --test "tests/*.test.mjs"
+pnpm install && pnpm check                     # 门禁：typecheck + build + 单测，绿了才提交
+pnpm build                                     # tsc 只出类型声明，esbuild（build.ts）出 js 并打包 adm-zip
 cd docs-site; pnpm dev                         # 文档站，http://localhost:4317
 pnpm exec docfirst check                       # 钉码门禁，单独跑，红了提交不许推
 ```
@@ -24,7 +24,7 @@ pnpm exec docfirst check                       # 钉码门禁，单独跑，红�
   调用方给的 outDir，交出去的就是原料：markdown 文件名、lang、文件清单，外加这次怎么落的
   （`commit` / `backup`）与没搬的清单（`skipped`）
 * **submit 必须秒回**：作业号数组先回、后台各跑各的，绝不把分钟级云端解析放进一次同步调用
-* **一个 outDir 一次只落一个作业**：提交时同步占位，同批撞车或撞上在跑的作业整批当场拒——
+* **一个 outDir 一次只落一个作业**：提交时同步占位，同批两条冲突或与在跑的作业冲突，整批当场拒——
   两条并排往同一个目录里解，先落定的那条账立刻不准。已有产物默认拒，要覆盖得显式 `overwrite`
 * **产物整份出现，围栏一条不合格整包不落盘**：全量 entry 过关才解进工作根 staging，
   提交点是整体 rename；盘符/`..`/反斜杠/绝对路径/真实路径逃逸一律结构化拒（见 extract.ts）
@@ -35,17 +35,19 @@ pnpm exec docfirst check                       # 钉码门禁，单独跑，红�
   云端 batch\_id 是实测否掉的形状（解析连带失败）；网络抖动与并发无关（单发也撞、重试即过），
   防护靠 error 带 cause，不靠限流（见文档站轨迹区 parallel-and-serial-overturned 那张卡）
 * **写盘排队不许拆**：多作业并行推进时作业账写盘排一条链——并发 rename 同一个 jobs.json
-  撞过 EPERM
-* **设置项必须在 init 里 `define`**：不声明 get 永远 undefined、不报错（撞过，见文档站
+  遇到过 EPERM
+* **设置项必须在 init 里 `define`**：不声明 get 永远 undefined、不报错（遇到过，见文档站
   轨迹区那面墙）
-* **轮询不许退回短墙钟**：失败只看云端进度停滞与总上限——墙钟误杀长文档，调用方重提就重复
+* **轮询不许退回短墙钟**：失败只看云端进度停滞与总上限——墙钟会把长文档误判为失败，调用方重提就重复
   扣额度（见文档站轨迹区 0.2.0 那张卡）
 
 ## 代码地图
 
 `src/index.ts`（作业机：状态机、账、命令、事件、outDir 占用与覆盖策略）→ `src/core/mineru.ts`
 （云端三动作）→ `src/core/extract.ts`（zip 围栏 + staging 原子提交 + 归档 + CJK 语言判定）。
-后两块是纯函数模块、互不认识；单测在 `tests/`，细节读文档站现状区三页。
+后两块是纯函数模块、互不认识；`src/vocab.ts` 是插件自带的 `isRecord` / `requireKernel`
+（词汇表包只有类型）。单测在 `tests/`，细节读文档站现状区三页。依赖写法：peer 只有 `cordis`
+与内核包，其余全在 dev，adm-zip 打包进产物——别把它挪回 `dependencies`。
 
 ## 生成物与实验材料
 
@@ -56,5 +58,5 @@ pnpm exec docfirst check                       # 钉码门禁，单独跑，红�
   路径指过去，判据见 trajectory skill
 * 轨迹卡（`docs-site/content/trajectory/`）只增不改、正文不许钉码
 
-写或改文档站之前读 docfirst-docs 说明书（经 gwb-docfirst-workflow 件开出，或读
-`D:\unitfolders\26090315xby\god-live-doc\docs-site\content\outputs\skills\` 包内正本）。
+写或改文档站之前读 docfirst-docs 说明书（由 gwb-docfirst-workflow 插件提供，正本在
+`D:\unitfolders\s28bv-gwbbase\god-live-doc\packages\gwb-docfirst-workflow\skills\docfirst-docs\SKILL.md`）。

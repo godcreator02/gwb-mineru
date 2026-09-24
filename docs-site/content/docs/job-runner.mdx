@@ -1,18 +1,18 @@
 ---
 title: 作业机：gwbPdf2md 服务
-description: src/index.ts——submit 收数组秒回、作业各自独立全并行、一个 outDir 一次只落一个作业、作业账排队落盘、重启对账、凭归档 recover；命令与事件的脸也在这层
+description: src/index.ts——submit 收数组秒回、作业各自独立全并行、一个 outDir 一次只落一个作业、作业账排队落盘、重启对账、凭归档 recover；命令与事件也在这层
 ---
 
 # 作业机：gwbPdf2md 服务
 
 **本页回答**：`src/index.ts` 管什么、不管什么；submit 怎么收一批、作业为什么各自独立跑、
-outDir 的占用与覆盖怎么把；账怎么落；三个邻居服务为什么是硬依赖。
+outDir 的占用与覆盖怎么管；账怎么记；三个邻居服务为什么是硬依赖。
 
 ## 管什么
 
 作业的一生：验参占位秒回、各跑各的全链（报名 → 上传 → 轮询 → 下载解包）、每步推进落账、
 云端进度变了记账、终态推 UI 事件、启动对账、卸载打断、凭盘上归档重新解包。outDir 的占用与
-覆盖策略也在这一层。命令面 `pdf2md.*` 四条与说明书注册同样在这儿。
+覆盖策略也在这一层。`pdf2md.*` 四条命令与说明书注册同样在这儿。
 
 ## 不知道什么
 
@@ -24,7 +24,7 @@ outDir 的占用与覆盖怎么把；账怎么落；三个邻居服务为什么�
 
 ## 数据结构
 
-一条作业的账，落盘就是它——只装可序列化的东西。产物那几格（`markdown` / `lang` / `files` /
+一条作业的账，落盘就是它——只装可序列化的东西。产物那几个字段（`markdown` / `lang` / `files` /
 `skipped`）与归档、提交结果（`archive` / `commit` / `backup`）都是 done 之后才有的：
 
 {/* ref file="../src/index.ts" lines="50-88" */}
@@ -44,19 +44,19 @@ outDir 的占用与覆盖怎么把；账怎么落；三个邻居服务为什么�
 
 | 接口 | 用来做什么 | 生产实现 | 测试实现 |
 | --- | --- | --- | --- |
-| `gwbSettings` | define token 那格、现取 | gwb-settings 件 | 假 ctx：`tests/job-runner.test.mjs` |
-| `gwbData` | 作业账 `writeDoc` / `readDoc`（文档名 `jobs`） | gwb-data 件 | 同上（内存 Map） |
-| `gwbCommands` | 登记四条命令 | gwb-commands 件 | 同上 |
-| `gwbSkills` | 注册说明书目录（局部、可选） | gwb-skills 件 | 没装也不挂 |
+| `gwbSettings` | define token 设置项、用时现取 | gwb-settings 插件 | 假 ctx：`tests/job-runner.test.mjs` |
+| `gwbData` | 作业账 `writeDoc` / `readDoc`（文档名 `jobs`） | gwb-data 插件 | 同上（内存 Map） |
+| `gwbCommands` | 登记四条命令 | gwb-commands 插件 | 同上 |
+| `gwbSkills` | 注册说明书目录（局部、可选） | gwb-skills 插件 | 没装也照常加载 |
 | `gwbKernel.emit` | 终态推 `job-settled` | gwb-kernel | 同上（收进数组） |
 
-三个邻居服务走 `static inject` 硬依赖，缺谁这个件不挂——比挂上之后半身不遂好查。类字段存
+三个邻居服务走 `static inject` 硬依赖，缺哪个本插件都不加载——比加载之后缺一部分功能好查。类字段存
 引用跨不到消费者扩展，所以用的时候一律 `this.own.<服务>` 现取（那晚的修理与翻案见
 [那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）：
 
 {/* ref file="../src/index.ts" lines="149-157" */}
 
-skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
+skills 不进硬依赖——没装说明书插件的 home 里作业机照常加载：
 
 {/* ref file="../src/index.ts" lines="244-247" */}
 
@@ -65,23 +65,23 @@ skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 `pnpm test`（先 `pnpm build`，再 `node --test "tests/*.test.mjs"`）。打这一层的是
 `tests/job-runner.test.mjs`：真 cordis Context + 三个假邻居服务（settings / data / commands）+
 假内核，云端是替身 fetch（报名、PUT、轮询、下载四个动作全在内存里，零网络零额度），PDF 是随手
-写的假文件。它证明四件事：一条作业的全链与回执字段；同一 outDir 的三种把法（同批撞车、
+写的假文件。它证明四点：一条作业的全链与回执字段；同一 outDir 的三种拒法（同批撞车、
 前一条在跑、前一条已 done 但目录非空）；显式覆盖时旧产物整份进备份；提交点撞车后
 `pdf2md.recover` 凭归档补上且**云端一次都没再问**。
 
-能单测的两块被刻意切在服务外面——云端客户端与解包都是纯函数模块，不欠 cordis，
-这正是依赖方向单向的回报。
+能单测的两块被刻意切在服务外面——云端客户端与解包都是纯函数模块，不依赖 cordis，
+这正是依赖方向单向带来的好处。
 
 ## 代码地图
 
 - **在哪**：`src/index.ts`，一个文件
 - **先读**：文件头注释（14–35 行，自我介绍与 outDir 那条线）→ `submit`（262 行）→ `run`（419 行）→ `recover`（341 行）
-- **读序**：`[Service.init]`（登记命令与设置、启动对账）→ `submit`（整批验参、占位、落账、逐条点火）→
-  `start`（包一层兜底收尾）→ `run`（一条作业的全链）→ `extract`（下载解包那一段与失败时的归档记账）→
+- **读序**：`[Service.init]`（登记命令与设置、启动对账）→ `submit`（整批验参、占位、落账、逐条启动）→
+  `start`（处理 run 自己抛出的异常，把作业记成 failed）→ `run`（一条作业的全链）→ `extract`（下载解包那一段与失败时的归档记账）→
   `recover`（凭归档重解）→ `noteProgress`（进度记账）→ `finish`（状态推进 + 终态 emit）→
   `persist` / `load`（账的排队写与对账）
-- **可跳过**：`dist/`（tsc 产物）、`describeError`（把 `cause` 拼进失败原因的几行）、
-  `extractOptions` / `extractReceipt`（一个作业记录摊成解包参数、再摊回来）
+- **可跳过**：`dist/`（构建产物：tsc 输出类型声明、esbuild 输出 js）、`describeError`（把 `cause` 拼进失败原因的几行）、
+  `extractOptions` / `extractReceipt`（把作业记录转成解包参数、再把解包结果转回作业字段）
 
 ## 设计点（错了难改的那几条）
 
@@ -132,17 +132,17 @@ skills 不进硬依赖——没装 skills 件的 home 里作业机照常挂：
 
 {/* ref file="../src/index.ts" lines="139-147" */}
 
-**作业的命脉挂提供方，不挂消费者**：方法里的 `this.ctx` 是消费者的——定时器、落账、收尾
-全挂 `this.own`，消费者卸载不该带走一个还在跑的转换（上面「依赖的接口」那段钉过）。
+**作业用到的资源登记在提供方，不登记在消费者**：方法里的 `this.ctx` 是消费者的——定时器、记账、清理
+全部经 `this.own`，消费者卸载不该带走一个还在跑的转换（上面「依赖的接口」那段引用过）。
 
-**启动对账与卸载打断，只标不重跑**：重启后上次留下的非终态作业（含还没点火的）标 `interrupted`
-（理由写进 error），件卸载时 abort 还在跑的控制器、把非终态一并标上——不丢账、不假装还在跑，
+**启动对账与卸载打断，只标不重跑**：重启后上次留下的非终态作业（含还没启动的）标 `interrupted`
+（理由写进 error），插件卸载时 abort 还在跑的控制器、把非终态一并标上——不丢账、不假装还在跑，
 也**不**自动重提：
 
 {/* ref file="../src/index.ts" lines="518-540" */}
 
 **进度只记账，不推事件**：轮询每 5 秒一问，云端报的页数变了才写盘，没变不写；界面事件仍只有
-落定那一条 `job-settled`——看进度的人查 status，件不把每一轮回包转发成事件：
+落定那一条 `job-settled`——看进度的人查 status，插件不把每一轮回包转发成事件：
 
 {/* ref file="../src/index.ts" lines="470-479" */}
 

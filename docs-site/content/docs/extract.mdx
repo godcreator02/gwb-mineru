@@ -15,15 +15,15 @@ description: src/core/extract.ts——下载 zip、围栏校验全部 entry、�
 
 {/* ref file="../src/core/extract.ts" lines="148-198" */}
 
-两个入口：`downloadExtract(zipUrl, outDir, options)` 走云端那条路（抓下来先落盘再见解包，云端只管给
+两个入口：`downloadExtract(zipUrl, outDir, options)` 走云端那条路（下载后先落盘再解包，云端只管给
 zip）；`extractArchive(archive, outDir, options)` 从盘上那份归档解——零网络，作业机的
 `pdf2md.recover` 走的就是它。
 
 ## 不知道什么
 
 - 不知道 zip 从哪来——URL 是[云端客户端](/docs/mineru-client)轮询出来的
-- 不知道 outDir 之后被谁用、文件该叫什么——成品命名是调用方（如 papers）的私约
-- 不知道论文库存在——「归档副本 + 成品位」那套篇目录布局不在这儿，这个件只交原料
+- 不知道 outDir 之后被谁用、文件该叫什么——成品命名是调用方（如 papers）的私有约定
+- 不知道论文库存在——「归档副本 + 成品位」那套篇目录布局不在这儿，这个插件只交原料
 - 不知道作业的账——它只回一份结果：产物三样，加没搬的清单、归档路径与这次提交的结果
 
 ## 数据结构
@@ -43,23 +43,23 @@ POSIX 路径清单；`skipped` 是白名单外、没搬的条目（zip 根上的
 | `extractArchive(archive, outDir, options)` | 从盘上那份归档解一遍，零网络（`pdf2md.recover` 用它） |
 | `isChineseDominant(body)` | CJK 字数×3 ≥ ASCII 字母数判 zh（老仓口径原样） |
 | `ArchiveError` | zip 结构不符合预期时抛：找不到 markdown、候选不唯一、markdown 不在根下 |
-| `EntryRejectedError` | 某条 entry 犯围栏时抛：带 `entry`（哪条）与 `reason`（犯的哪条） |
+| `EntryRejectedError` | 某条 entry 违反围栏时抛：带 `entry`（哪条）与 `reason`（违反的哪条） |
 | `CommitRejectedError` | 提交点到不了位时抛：带 `outDir`；outDir 一个字节没动 |
 
 三类错误都带 `archive`——归档已经落盘时指明它在哪，调用方凭它重新解包，不必再问云端要。
 
 ## 依赖的接口
 
-`adm-zip`（唯一的 runtime 依赖）、全局 `fetch`、`node:fs/promises` 与 `node:fs` 的
+`adm-zip`（唯一的第三方库；构建时由 esbuild 打包进 `dist/`，产物里没有它的包名 import）、全局 `fetch`、`node:fs/promises` 与 `node:fs` 的
 `realpathSync.native`。零 gwb 依赖。
 
 ## 怎么单独测
 
 `pnpm test`（先 `pnpm build`，再 `node --test "tests/*.test.mjs"`）。打这一层的是
-`tests/extract.test.mjs`：围栏七种犯法各一条（`..` 段、反斜杠、盘符、绝对路径、备用数据流、
+`tests/extract.test.mjs`：围栏七种违规各一条（`..` 段、反斜杠、盘符、绝对路径、备用数据流、
 控制字符、归一后一个段都不剩）、一条坏的混在好条目里必须整包零落盘、提交点的默认拒与显式覆盖、
 同 outDir 两条并排、以及「归档落盘后零网络再解一遍」。云端与真 PDF 都不出现：`fetch` 是替身、
-zip 是 adm-zip 现搓的（`tests/helpers.mjs`）——`addFile` 会把 `..` 归一掉，所以那条 helper 先按
+zip 是测试里用 adm-zip 现场生成的（`tests/helpers.mjs`）——`addFile` 会把 `..` 归一掉，所以那条 helper 先按
 占位名加、再把 `entryName` 改回原样。
 
 ## 代码地图
@@ -69,13 +69,13 @@ zip 是 adm-zip 现搓的（`tests/helpers.mjs`）——`addFile` 会把 `..` �
 - **读序**：`extractArchive`（归档 → 围栏分拣 → staging → 提交）→ `planEntries` / `splitEntryName`
   （围栏）→ `assertRealInside`（真实路径）→ `publish`（提交点）→ `findMarkdown`（认名）→
   `isChineseDominant`（语言）
-- **可跳过**：`safeSegment` / `stamp` / `zipBasename` 几个小件、`parseJournal`（提交中途的账）
+- **可跳过**：`safeSegment` / `stamp` / `zipBasename` 几个小函数、`parseJournal`（提交中途的账）
 
 ## 设计点（错了难改的那几条）
 
 **围栏：全量校验完才落盘**。一条 entry 的名字要过六道——空名、控制字符、反斜杠（Windows 上它也是
 分隔符，落点说不清）、冒号（盘符或 NTFS 备用数据流）、绝对路径、`..` 段；归一后两条 entry 撞同一个
-落点、或一条既是文件又是另一条的父目录，同样拒。**一条不合格整包不落盘**，报出是哪条、犯的哪条：
+落点、或一条既是文件又是另一条的父目录，同样拒。**一条不合格整包不落盘**，报出是哪条、违反的哪条：
 
 {/* ref file="../src/core/extract.ts" lines="255-269" */}
 
@@ -85,21 +85,21 @@ zip 是 adm-zip 现搓的（`tests/helpers.mjs`）——`addFile` 会把 `..` �
 
 {/* ref file="../src/core/extract.ts" lines="221-253" */}
 
-**落点还要过一次真实路径**：词法上没毛病不等于真落在里面——软链 / 目录联接件能把落点绕出去。
+**落点还要过一次真实路径**：词法上没毛病不等于真落在里面——软链接 / 目录联接能把落点绕出去。
 父目录还不存在时，realpath 它**最近的已存在祖先**、再把剩下的段拼回来，比对是否跑出落点根：
 
 {/* ref file="../src/core/extract.ts" lines="271-295" */}
 
 **提交点是 rename，产物整份出现**。解包全在 outDir 同级工作根的 `staged-<作业号>` 里做完，提交时
 整体 rename 进 outDir——outDir 要么还是上一版、要么就是完整的新版，**没有半个产出**这种中间态
-（老形状是逐文件原地覆盖，写一半挂掉就新旧混着）。提交点同时是并发的那道闸：outDir 在查过之后、
+（老形状是逐文件原地覆盖，写一半挂掉就新旧混着）。提交点同时是并发的那道检查：outDir 在查过之后、
 rename 之前被别人占了，Windows 给 EPERM/EEXIST，翻成结构化拒，说清 outDir 没动：
 
 {/* ref file="../src/core/extract.ts" lines="297-358" */}
 
 **已有产物默认拒，要覆盖得显式**。outDir 是空的（或不存在）→ 直接提交；里面有东西而这次没带
 `overwrite` → 拒，一个字节不动；带了 `overwrite` → 旧产物**整份**先 rename 进工作根的
-`backup-<时间戳>/`，再上新的。备份不自动清——那是调用方的东西，件不替它删。
+`backup-<时间戳>/`，再上新的。备份不自动清——那是调用方的东西，插件不替它删。
 
 **崩在两次 rename 之间也不留空目录**。覆盖要挪两次（旧的去备份、新的进来），中间断电会留下
 「outDir 不在、旧产物在备份里」。提交前先写一份 journal，下一次对同一个 outDir 开工时凭它把旧产物
@@ -119,15 +119,15 @@ rename 之前被别人占了，Windows 给 EPERM/EEXIST，翻成结构化拒，�
 {/* ref file="../src/core/extract.ts" lines="200-210" */}
 
 **认 markdown：full.md 优先，否则要求唯一，且必须在根下**：优先认 `full.md`；没有它就得只有一份
-`.md`，两份以上歧义即抛（猜一个，比报错贵）；认出来的那份不在 zip 根下同样抛——这个件的契约只认
+`.md`，两份以上歧义即抛（猜一个，比报错贵）；认出来的那份不在 zip 根下同样抛——这个插件的契约只认
 根下那份：
 
 {/* ref file="../src/core/extract.ts" lines="409-422" */}
 
 **解包完自检一次**：markdown 不在 staging 里说明这趟解包不可信，当场抛、让作业进 failed——
-不带病提交。
+不带着问题提交。
 
-**语言判定跟着件走**：CJK 占比是通用文本分析，跟论文库没有关系；调用方拿 `lang` 去定
+**语言判定放在这个插件里**：CJK 占比是通用文本分析，跟论文库没有关系；调用方拿 `lang` 去定
 自己的成品命名。口径是老仓原样：CJK 字数 × 3 ≥ ASCII 字母数判 zh。
 
 {/* ref file="../src/core/extract.ts" lines="118-128" */}

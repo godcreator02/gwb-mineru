@@ -1,9 +1,9 @@
 import { readdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { Service } from 'cordis'
-import { isRecord, requireKernel, type GwbContext } from '@godcreator/gwb-plugin-api'
-// 只为激活 commands / data / skills / settings 四个件给 cordis Context 加的服务名。
-// type-only，运行期不欠它们；static inject 那三个名字靠这些声明才有类型
+import type { GwbContext } from '@godcreator/gwb-plugin-api'
+import { isRecord, requireKernel } from './vocab.js'
+// 空的类型 import 只为让四个插件的 `declare module 'cordis'` 生效，ctx 上才有 gwbCommands / gwbData / gwbSettings / gwbSkills 的类型
 import type {} from '@godcreator/gwb-commands'
 import type {} from '@godcreator/gwb-data'
 import type {} from '@godcreator/gwb-settings'
@@ -16,8 +16,8 @@ import { MAX_FILE_BYTES, isDone, poll, requestUpload, upload, type FileResult } 
  * 命令是页面等着的一次调用，分钟级的云端解析绝不能在线等；作业号先回，终态经
  * `gwbKernel.emit` 推一条事件。
  *
- * **件叫 gwb-mineru、服务叫 gwbPdf2md——名字不对应是有意的**（对着本仓惯例
- * 「服务名跟件名走」的唯一例外）：件名说**谁在干活**（MinerU 引擎），服务名与
+ * **插件叫 gwb-mineru、服务叫 gwbPdf2md——名字不对应是有意的**（本仓惯例
+ * 「服务名跟插件名一致」的唯一例外）：插件名说**谁在干活**（MinerU 引擎），服务名与
  * 命令前缀说**干的是什么**（pdf2md）。消费方 inject 的永远是 `gwbPdf2md`。
  *
  * 零库概念：输入一个 PDF 绝对路径、一个输出目录，产出完整 markdown + images/ 原样落
@@ -29,7 +29,7 @@ import { MAX_FILE_BYTES, isDone, poll, requestUpload, upload, type FileResult } 
  * 要覆盖得显式 overwrite（旧产物先备份）。围栏与原子提交在解包那一层（见 core/extract.ts）。
  *
  * 三个邻居服务走 `static inject` 硬依赖（gwb-node-cli 的同款姿势）：settings（token）、
- * data（作业账）、commands（命令那面）。缺谁这个件不挂——比挂上之后半身不遂好查。
+ * data（作业账）、commands（命令）。缺哪个本插件都不加载——比加载之后缺一部分功能好查。
  * 用的时候一律 `this.own.<服务>` 现取。**设置项必须在 init 里 define**：不声明的话
  * get 永远回 undefined——实机撞过一轮，症状是「token 明明在 settings.json 里，
  * 命令却报没配」。
@@ -86,7 +86,7 @@ export interface Pdf2mdSubmitInput {
   readonly overwrite?: boolean
 }
 
-/** 消费方拿到的那一格。写 `inject: ['gwbPdf2md']` 才有 */
+/** 消费方拿到的服务接口。写 `inject: ['gwbPdf2md']` 才有 */
 export interface GwbPdf2mdApi {
   /**
    * 提交一批转换作业（一作业一文件）。验完全部文件与目录、落完账才返回——**返回不是完成**，
@@ -106,7 +106,7 @@ export interface GwbPdf2mdApi {
   list(): Pdf2mdJob[]
 }
 
-/** 设置：一枚凭据。节名跟 cordis.yml 条目 id 走（mineru），声明在 init 里——不声明的话 get 永远回 undefined（实机撞过） */
+/** 设置：一个凭据。节名跟 cordis.yml 条目 id 走（mineru），声明在 init 里——不声明的话 get 永远回 undefined（实机撞过） */
 const TOKEN_DEF = {
   key: 'token',
   title: 'MinerU Token',
@@ -147,12 +147,12 @@ function describeError(err: unknown): string {
 }
 
 export default class GwbMineru extends Service implements GwbPdf2mdApi {
-  /** settings / data / commands 三个硬依赖缺谁不挂 */
+  /** settings / data / commands 三个硬依赖缺哪个都不加载 */
   static inject = ['gwbCommands', 'gwbSettings', 'gwbData']
 
   /**
-   * 提供方自己的 ctx。方法里的 `this.ctx` 是**消费者**的——作业的命脉（定时器、
-   * 落账、收尾）全挂在提供方身上，消费者卸载不该带走一个还在跑的转换
+   * 提供方自己的 ctx。方法里的 `this.ctx` 是**消费者**的——作业用到的定时器、
+   * 记账、清理全部登记在提供方的 ctx 上，消费者卸载不该带走一个还在跑的转换
    */
   private readonly own: GwbContext
   private readonly info: (message: string) => void
@@ -182,13 +182,13 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
   }
 
   [Service.init](): void {
-    // 件卸载：还在跑的作业全部打断、记 interrupted——不丢账、不假装还在跑
+    // 插件卸载：还在跑的作业全部打断、记 interrupted——不丢账、不假装还在跑
     this.own.effect(() => () => {
       for (const controller of this.controllers.values()) controller.abort()
       void this.settleInterrupted().catch(() => undefined)
     })
 
-    // 声明那一格设置。define 回注销函数，effect 包着走自动摘
+    // 声明设置项。define 返回注销函数，包进 effect，卸载时自动注销
     this.own.effect(() => this.own.gwbSettings.define(TOKEN_DEF))
 
     const cli = this.own.gwbCommands
@@ -241,7 +241,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
       ),
     )
 
-    // 说明书那一格，局部注入：没装 skills 件的 home 里作业机照常挂
+    // 说明书用局部注入：没装说明书插件的 home 里作业机照常加载
     this.own.inject(['gwbSkills'], (scoped) => {
       scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
     })
@@ -249,7 +249,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     // 启动对账：上一次运行留下的非终态作业，如今没人再轮询了。promise 存下来给
     // submit 当门槛——旧账没对完之前收新作业，首笔落账会把还没载入的旧账冲掉
     this.loadPromise = this.load().catch(() => undefined)
-    this.info('mineru 作业机就绪（ctx.gwbPdf2md，件 gwb-mineru）')
+    this.info('mineru 作业机就绪（ctx.gwbPdf2md，插件 gwb-mineru）')
   }
 
   /**
@@ -379,7 +379,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     return [...this.table.values()].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
   }
 
-  /** token 现取现读：settings 改值不重挂件就生效 */
+  /** token 每次用时现读：settings 改值后不用重新加载插件就生效 */
   private token(): string | undefined {
     const value = this.own.gwbSettings?.get('token')
     return typeof value === 'string' && value.trim() !== '' ? value : undefined
@@ -410,8 +410,8 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
    * 作业各跑各的、互不排队——云端本来就是一个任务一个任务地转 */
   private start(job: Pdf2mdJob, token: string): void {
     void this.run(job, token).catch(async (err: unknown) => {
-      // run 自己管状态收尾，这里只兜「run 自己炸了」的那种没人接的异常
-      this.warn(`作业 ${job.id} 的执行链炸了：${describeError(err)}`)
+      // run 自己负责把状态推到终态，这里只处理 run 自己抛出、没人接住的异常
+      this.warn(`作业 ${job.id} 的执行链抛出异常：${describeError(err)}`)
       await this.finish(job.id, 'failed', undefined, describeError(err))
     })
   }
@@ -543,7 +543,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     let changed = false
     for (const job of this.table.values()) {
       if (job.state === 'queued' || job.state === 'uploading' || job.state === 'running') {
-        this.table.set(job.id, { ...job, state: 'interrupted', updatedAt: nowIso(), error: '件卸载，作业被打断' })
+        this.table.set(job.id, { ...job, state: 'interrupted', updatedAt: nowIso(), error: '插件卸载，作业被打断' })
         this.release(job.outDir, job.id)
         changed = true
       }

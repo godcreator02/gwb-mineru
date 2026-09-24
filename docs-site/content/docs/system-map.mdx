@@ -5,7 +5,7 @@ description: 三块代码、一条作业的一生、盘上落了什么——一�
 
 # 系统地图
 
-**本页回答**：一句 `pdf2md.submit` 之后发生了什么；这个件分几块代码、各自管什么；产出落在盘上哪里。
+**本页回答**：一句 `pdf2md.submit` 之后发生了什么；这个插件分几块代码、各自管什么；产出落在盘上哪里。
 
 ## 三块代码
 
@@ -18,6 +18,7 @@ description: 三块代码、一条作业的一生、盘上落了什么——一�
 | **解包与语言**（`src/core/extract.ts`） | 下载结果 zip、原样解进 outDir、认出 markdown、判 zh/en。纯函数模块，不认识云端 | [解包与语言](/docs/extract) |
 
 依赖方向单向：作业机 → 云端客户端 → （网络）；作业机 → 解包。后两块互相不认识，都是作业机手里的工具。
+`src/vocab.ts` 只有 `isRecord` 与 `requireKernel` 两个无状态小函数：词汇表包 `@godcreator/gwb-plugin-api` 只有类型，这两个函数由插件自带一份。
 
 ## 一条作业的一生
 
@@ -25,7 +26,7 @@ description: 三块代码、一条作业的一生、盘上落了什么——一�
 
 ```
 queued → uploading → running → done | failed
-   \───────── 重启或件卸载 ─────────→ interrupted
+   \──────── 重启或插件卸载 ────────→ interrupted
 ```
 
 1. `pdf2md.submit`（或消费方调 `gwbPdf2md.submit`）收**数组**：整批验绝对路径、验文件在且不超
@@ -48,7 +49,7 @@ queued → uploading → running → done | failed
 | `<outDir>/full.md` | 完整 markdown（名字以作业 `markdown` 字段为准，通常是 full.md） |
 | `<outDir>/images/…` | 正文引用的图，跟 md 同层的相对链接，不用改 |
 | `<outDir>` 同级的 `.<outDir 名>.pdf2md/` | **工作根**：`archive-<作业号>.zip`（原始 zip 的落盘副本，recover 凭它）、`backup-<时间戳>/`（覆盖时挪出来的上一版）、staging 与提交 journal（都是过路的）。调用方随时可以整个删掉——正在跑的那条作业除外 |
-| `<home>/node_modules/@godcreator/gwb-mineru` | 件本体；进 home 走 `plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`（条目 id `mineru`，设置节随它） |
+| `<home>/node_modules/@godcreator/gwb-mineru` | 插件本体；进 home 走 `plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`（条目 id `mineru`，设置节随它） |
 
 作业账经 gwbData 落在 home 的数据区（文档名 `jobs`），不是文件树的公开面。
 
@@ -56,7 +57,9 @@ queued → uploading → running → done | failed
 
 | 什么 | 值 |
 | --- | --- |
-| 门禁 | `pnpm build` + `pnpm typecheck` + `pnpm test`（仓根）；`pnpm exec docfirst check`（docs-site，单独跑） |
+| 门禁 | `pnpm check`（仓根：typecheck，再构建并跑单测）；`pnpm exec docfirst check`（docs-site，单独跑） |
+| 构建 | `pnpm build`：tsc 按 `tsconfig.build.json` 只输出类型声明，`build.ts` 用 esbuild 输出 js，把 adm-zip 打包进产物（产物里的包名 import 只剩 node 内置模块与 `cordis`） |
+| 依赖写法 | peer 只有 `cordis`（服务类继承 cordis 的 `Service`，按值 import）与内核包 `@godcreator/gwb-kernel-desktop`；四个邻居插件、词汇表包、adm-zip 都在 dev。规矩的正本在 devkit 文档站「依赖怎么写」 |
 | 文档站 dev | `pnpm dev`（docs-site 下），端口 4317 |
 | 包源 | gitea 个人源 `https://git.tianshen02.online:28377/api/packages/godcreator/npm/`，`@godcreator` scope 路由住用户级 `~/.npmrc`，仓里不配 |
 | 凭据 | settings 节 `mineru`，键 `token`（secret），mineru.net 的 API 管理页创建 |
