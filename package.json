@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-mineru",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "author": {
     "name": "godcreator"
   },
@@ -23,7 +23,13 @@
     "skills"
   ],
   "gwb": {
-    "title": "PDF 转 markdown"
+    "title": "PDF 转 markdown",
+    "provides": {
+      "gwbPdf2md": {
+        "summary": "PDF 转 markdown 的作业服务：PDF 经 MinerU 云端解析，markdown 与 images/ 落进调用方给的 outDir",
+        "usage": "inject: ['gwbPdf2md']，ctx.gwbPdf2md.submit([{ input, outDir, overwrite? }, …]) 验完整批、落完账就回作业数组（返回不是完成，作业各自同时跑，终态经内核事件 { source: 'gwb-mineru', type: 'job-settled', jobId, ok, outDir, error? } 推出）；recover(id) 凭盘上原始 zip 重新解包、不花云端额度；get(id) 查一条（没有回 undefined）；list() 全部作业，新的在前。token 在设置节 mineru 的 token 键"
+      }
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
