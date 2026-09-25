@@ -1,45 +1,43 @@
 ---
 title: 术语表
-description: 这个插件造的词、gwb 工作台的词在这儿有特定含义的——每个词一句定义，指到详解页
+description: 这个插件自己的词，与 gwb 工作台的词在这里的含义——每个词一句定义，指到讲它的那一页
 ---
 
-# 术语表
+**本页回答**：文档里那个词到底指什么。收这个插件自己的词，与通用词在这里有特定含义的；通用编程词不收。
 
-**本页回答**：文档里那个词到底指什么。收这个插件自己造的、与通用词在这里有特定含义的词；
-通用编程词不收。
-
-## 这个插件
+## 这个插件的词
 
 | 词 | 是什么 |
 | --- | --- |
-| **作业机** | 这个插件的形态：`submit` 秒回作业号、后台跑全链、终态事件。对应 `src/index.ts` 的服务，见[作业机](/docs/job-runner) |
-| **作业** | 一次 PDF → markdown 转换的账（`Pdf2mdJob`）：输入、输出目录、状态、成败原因、产出三样。落盘就是它 |
-| **状态机六态** | `queued → uploading → running → done \| failed \| interrupted`；后三个是终态，到任一不再变化 |
-| **并行** | 作业各自独立、同时开跑：一次交 N 篇就是 N 个独立的单文件任务，云端各转各的，互不排队。判据见[作业机](/docs/job-runner) |
-| **作业账** | 作业记录的落盘副本，经 gwbData 存进文档 `jobs`。重启后靠它对账 |
-| **工作根** | outDir 同级的 `.<outDir 名>.pdf2md/`：归档、staging、备份都放在这儿。**不在 outDir 里**——产出目录要干净，整份提交也才成立。调用方随时可整个删（在跑的作业除外）。见[解包与语言](/docs/extract) |
-| **归档** | 结果 zip 的落盘副本（工作根里 `archive-<作业号>.zip`）。解包失败/中断后凭它重新解包，不必再花一次云端额度；作业账的 `archive` 记着路径 |
-| **围栏** | 解包前对全部 entry 的统一校验：白名单只有根下 markdown 与严格 `images/` 子树，盘符/冒号、绝对路径、`..` 段、反斜杠、控制字符与真实路径逃逸一律拒。一条不合格整包不落盘。见[解包与语言](/docs/extract) |
-| **提交点** | staging 整体 rename 进 outDir 的那一步：产物要么上一版、要么完整新版。outDir 已有产物默认拒，显式 `overwrite` 才把旧的挪进备份再上新的 |
-| **`overwrite`** | 提交里每一项上的显式开关：outDir 里已有产物时，`true` 才覆盖（旧产物先整份进 `backup-<时间戳>/`）。默认拒 |
-| **`pdf2md.recover`** | 凭作业盘上那份归档重新解包进它的 outDir：零云端、零额度。只对 failed / interrupted 且账上有归档的作业有效。见[用法](/docs/usage) |
-| **进度**（`progress`） | 云端解析中报来的已解析页 / 总页，记在作业上；排队时没有，done 时补满。只记账，不推事件 |
-| **停滞** | 云端在解析（running / converting）而状态与已解析页数一段时间都不动——作业按 failed 结算。排队不算停滞，只受总上限管。见[云端客户端](/docs/mineru-client) |
-| **interrupted** | 宿主重启或插件卸载打断的作业——账如实标注，不自动重跑；处置是重提一次。见[用法](/docs/usage)坑四条 |
-| **零库概念** | 输入一个 PDF 绝对路径、一个输出目录，产出 markdown + images/。不知道论文库存在，不做归档、不做成品命名 |
-| **语言判定** | 正文 zh/en 的判定：CJK 字数 × 3 ≥ ASCII 字母数判 zh。老仓口径原样，见[解包与语言](/docs/extract) |
-| **`job-settled`** | 作业到终态时经内核 emit 通道推的界面事件。给看着界面的人，不是给 agent 的回执 |
-| **名不对应** | 插件叫 `gwb-mineru`（说谁在干活：MinerU 引擎），服务与命令叫 `pdf2md.*`（说干什么：转换）。有意例外，见[那张卡](/trajectory/2026-09-08-engine-vs-function-naming) |
+| **作业机** | 这个插件的形态：`submit` 立即返回作业号，后台跑完全过程，到终态推事件。对应 `src/index.ts` 的服务，见[作业机](/docs/job-runner) |
+| **作业** | 一次 PDF 到 markdown 的转换记录（`Pdf2mdJob`）：输入、outDir、状态、失败原因、产物 |
+| **六个状态** | `queued`、`uploading`、`running`、`done`、`failed`、`interrupted`；后三个是终态，到了就不再变（`failed` 可以经 `recover` 变成 `done`） |
+| **作业账** | 全部作业记录写进磁盘的那份文档，经数据插件存成 `jobs`。宿主重启后靠它对账 |
+| **并行** | 一次交 N 篇就是 N 个独立的单文件云端任务，同时跑、互不排队。见[作业机](/docs/job-runner) |
+| **工作根** | outDir 旁边的 `.<outDir 名>.pdf2md/`，放归档、staging、备份与提交 journal；不在 outDir 里。见[解包](/docs/extract) |
+| **归档** | 结果 zip 在工作根里的副本 `archive-<作业号>.zip`。解包失败后凭它 `recover`，不必再花一次云端额度；作业账的 `archive` 记着路径 |
+| **围栏** | 解包前对 zip 里全部 entry 的检查：只搬根下的 markdown 与 `images/` 下的文件，名字与真实路径越界的一律拒，有一条不合格整个 zip 都不写。见[解包](/docs/extract) |
+| **提交点** | 把 staging 整个改名成 outDir 的那一步：outDir 要么是上一版、要么是完整的新版。已有产物默认拒，`overwrite` 才覆盖 |
+| **`overwrite`** | `submit` 每一项上的开关：outDir 里已有产物时，`true` 才覆盖，旧产物先整个挪进 `backup-<时间>/` |
+| **`recover`** | `pdf2md.recover`：凭归档把解包重做一遍，不碰云端。只收 `failed` / `interrupted` 且账上有归档的作业。见[用法](/docs/usage) |
+| **进度** | `progress`：云端解析中报来的已解析页与总页，记在作业上；排队时没有，完成时补满。只记账，不推事件 |
+| **停滞** | 云端在解析（`running` / `converting`）而状态与已解析页数 10 分钟都不动，作业记成 `failed`。排队不算停滞，只受 1 小时总上限管。见[云端客户端](/docs/mineru-client) |
+| **`interrupted`** | 宿主重启或插件卸载时没到终态的作业。账上如实标注，不自动重跑；有归档的可以 `recover`，没有的重新提交 |
+| **零库概念** | 输入一个 PDF 路径、一个 outDir，产出 markdown 与 `images/`；不知道论文库存在，不做归档副本、不给成品命名 |
+| **语言判定** | 中文字符数 × 3 ≥ ASCII 字母数判 `zh`，否则 `en`。见[解包](/docs/extract) |
+| **`job-settled`** | 作业到 `done` 或 `failed` 时经内核推给页面的事件。给看着界面的人用，不是给 agent 的回执 |
+| **名字不对应** | 插件叫 `gwb-mineru`（说干活的是 MinerU），服务与命令叫 `pdf2md`（说干的是什么）。见轨迹卡[名不对应](/trajectory/2026-09-08-engine-vs-function-naming) |
 
-## gwb 工作台的词（在这里的含义）
+## gwb 工作台的词在这里的含义
 
 | 词 | 是什么 |
 | --- | --- |
-| **插件** | gwb 工作台的功能单位：一个 npm 包，装进 home、经 cordis 加载。内核的正本见 gwb-kernel 的文档站 |
-| **home** | 插件装在的地方，一个普通的 npm 项目根；本插件的凭据节 `mineru` 也存在那边的 settings |
-| **static inject** | cordis 的硬依赖声明：`static inject = ['gwbCommands', …]`——缺哪个本插件就不加载。本插件对 settings / data / commands 用它 |
-| **局部注入** | `ctx.inject(['gwbSkills'], …)` 那种可选依赖：没装 skills 插件的 home 里作业机照常加载 |
-| **gwbData** | gwb-data 插件提供的小型落盘服务（`readDoc` / `writeDoc`）。作业账的存放处 |
-| **设置节** | settings 里按插件分的节。本插件的节名 `mineru`（跟 cordis.yml 条目 id 走），键 `token`，类型 secret |
-| **MinerU** | 云端 PDF 解析服务（mineru.net 精准解析 API v4），vlm 模型，公式表格都开，语言 ch（中英混合）。解析是分钟级的——作业形态的全部理由 |
-| **`full.md`** | MinerU 结果 zip 里完整 markdown 的标准名。解包时优先认它，没有则要求 `.md` 唯一 |
+| **插件** | gwb 工作台的功能单位：一个 npm 包，装进 home、由 cordis 加载 |
+| **home** | 插件装在的地方，一个普通的 npm 项目根；本插件的 token 存在它的设置文件里 |
+| **`static inject`** | 写在服务类上的必需依赖：缺哪个本插件就不加载。本插件对命令总线、设置、数据三个服务用它 |
+| **局部注入** | `ctx.inject(['gwbSkills'], …)` 这种写法：服务在才执行，不在也照常加载。本插件只对说明书插件用它 |
+| **设置节** | 设置文件里按插件分的节。本插件的节名 `mineru`，由设置插件按条目 id 算出；键 `token`，类型 secret |
+| **MinerU** | 云端 PDF 解析服务（mineru.net 的精准解析 API v4）。本插件写死 vlm 模型、开公式与表格、语言 `ch`（中英混合） |
+| **`full.md`** | MinerU 结果 zip 里完整 markdown 的标准名。解包时优先认它，没有就要求 `.md` 只有一份 |
+
+一个词进表的门槛：在两页以上出现，或者读者第一次见会问「这是什么」。名字定了就别改，改名写进轨迹卡。

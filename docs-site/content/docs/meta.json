@@ -1,10 +1,11 @@
 {
   "pages": [
-    "system-map",
+    "index",
     "usage",
     "job-runner",
     "mineru-client",
     "extract",
+    "wiring",
     "glossary",
     "outputs"
   ]

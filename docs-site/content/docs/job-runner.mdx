@@ -1,158 +1,123 @@
 ---
 title: 作业机：gwbPdf2md 服务
-description: src/index.ts——submit 收数组秒回、作业各自独立全并行、一个 outDir 一次只落一个作业、作业账排队落盘、重启对账、凭归档 recover；命令与事件也在这层
+description: src/index.ts——一条作业怎么走过六个状态；submit 返回前做了什么；outDir 怎么占用；作业账怎么写；失败怎么记、recover 怎么补；启动对账与卸载打断
 ---
 
-# 作业机：gwbPdf2md 服务
+**本页回答**：`src/index.ts` 管什么、不管什么；一条作业怎么走过六个状态、每一步写进作业账什么；`submit` 返回前做了什么；
+outDir 的占用与覆盖怎么管；作业账怎么写；失败怎么记、`recover` 怎么补。它跟外面各插件的连接见[首页](/docs)的接缝 ①–⑧，
+注入与 peer 汇总在[插件之间怎么连](/docs/wiring)。
 
-**本页回答**：`src/index.ts` 管什么、不管什么；submit 怎么收一批、作业为什么各自独立跑、
-outDir 的占用与覆盖怎么管；账怎么记；三个邻居服务为什么是硬依赖。
+作业机管作业的一生：检查参数、占住 outDir、写账、立即返回；后台为每条作业调云端客户端与解包；每次状态推进都写账；
+到终态推事件；启动时对账；卸载时打断；凭归档重新解包。它不知道 MinerU 的接口长什么样（在[云端客户端](/docs/mineru-client)），
+不知道 zip 里有什么、怎么防越界（在[解包](/docs/extract)），也不知道调用方拿产物做什么。
 
-## 管什么
+## 一条作业怎么走
 
-作业的一生：验参占位秒回、各跑各的全链（报名 → 上传 → 轮询 → 下载解包）、每步推进落账、
-云端进度变了记账、终态推 UI 事件、启动对账、卸载打断、凭盘上归档重新解包。outDir 的占用与
-覆盖策略也在这一层。`pdf2md.*` 四条命令与说明书注册同样在这儿。
+<JobLifecycle />
 
-## 不知道什么
+六个状态里 `done`、`failed`、`interrupted` 是终态。演示里画的是最常见的路径；实际上三个非终态中的任何一个都可能直接到
+`failed`（比如上传失败）或 `interrupted`（插件卸载、宿主重启）。`failed` 到 `done` 只有一条路：`recover`。
 
-- 不知道 MinerU API 长什么样——三个动作在 [云端客户端](/docs/mineru-client)
-- 不知道 zip 里有什么、怎么防越界、怎么原子落盘——在[解包与语言](/docs/extract)
-- 不知道调用方拿产出干什么——零库概念，「归档副本、成品位命名」那套篇目录布局是调用方的
-  私有约定，不在这儿
-- 不知道 token 的值——settings 给，submit 时现取
-
-## 数据结构
-
-一条作业的账，落盘就是它——只装可序列化的东西。产物那几个字段（`markdown` / `lang` / `files` /
-`skipped`）与归档、提交结果（`archive` / `commit` / `backup`）都是 done 之后才有的：
+作业账里的一条就是下面这个对象，只装可以序列化的东西。产物字段（`markdown`、`lang`、`files`、`skipped`）与
+`archive`、`commit`、`backup` 都是解包之后才有的：
 
 {/* ref file="../plugins/mineru/src/index.ts" lines="24-61" hash="d73d7e30809a" blob="c1ea4e1b5397" */}
 
-`state` 六态：`queued → uploading → running → done | failed | interrupted`，后三态是终态。
-`queued` 是落账到开跑之间的瞬态。`progress` 是云端报来的已解析页 / 总页，`running` 期间才会
-出现，done 时补满；云端排队时没有它。
+## submit 返回前做了什么
 
-## 提供的接口
+MinerU 解析一篇要几十秒到几分钟，命令是调用方等着回执的一次调用，所以云端那部分一律放到后台。`submit` 在返回前只做本地的事：
+检查整批参数、占住每个 outDir、等启动对账完成、把 `queued` 写进作业账。写账也在返回前做完，是因为回了作业号就要保证宿主重启后还查得到；
+写不进去就撤回这批作业、整批拒绝。
 
-- 服务 `ctx.gwbPdf2md`：`submit` / `recover` / `get` / `list`（契约见[用法](/docs/usage)）
-- 命令 `pdf2md.submit` / `pdf2md.status` / `pdf2md.jobs` / `pdf2md.recover`
-- 事件 `job-settled`（终态时，经内核 emit 通道）
-- 说明书目录 `skills/`（经 gwb-skills 局部注入）
+{/* ref file="../plugins/mineru/src/index.ts" lines="221-240" hash="f1b71fc8c3e7" blob="c1ea4e1b5397" */}
 
-## 依赖的接口
+## 一个 outDir 同一时间只归一条作业
 
-| 接口 | 用来做什么 | 生产实现 | 测试实现 |
-| --- | --- | --- | --- |
-| `gwbSettings` | define token 设置项、用时现取 | gwb-settings 插件 | 假 ctx：`tests/job-runner.test.mjs` |
-| `gwbData` | 作业账 `writeDoc` / `readDoc`（文档名 `jobs`） | gwb-data 插件 | 同上（内存 Map） |
-| `gwbCommands` | 登记四条命令 | gwb-commands 插件 | 同上 |
-| `gwbSkills` | 注册说明书目录（局部、可选） | gwb-skills 插件 | 没装也照常加载 |
-| `gwbKernel.emit` | 终态推 `job-settled` | gwb-kernel | 同上（收进数组） |
+占用发生在第一个 `await` 之前：两个同时到来的 `submit` 不能都看到「这个 outDir 空着」。先把整批查完再一起占，所以有一条冲突就一个都不占。
+同一批里两条指向同一个目录，与遇上一条还在跑的作业，报错分开写，并写出占着它的作业号。作业到终态就放开这个 outDir：
 
-三个邻居服务走 `static inject` 硬依赖，缺哪个本插件都不加载——比加载之后缺一部分功能好查。类字段存
-引用跨不到消费者扩展，所以用的时候一律 `this.providerContext.<服务>` 现取（那晚的修理与翻案见
-[那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）：
+{/* ref file="../plugins/mineru/src/index.ts" lines="310-332" hash="64d57f3520d9" blob="c1ea4e1b5397" */}
+
+outDir 已经存在时，它必须是目录；里面有东西而这一项没带 `overwrite`，提交时就拒，不排一条最后注定失败的作业。
+这只是提前检查：云端跑的几分钟里谁都可能往 outDir 里放东西，真正说了算的是解包的[提交点](/docs/extract)。
+
+{/* ref file="../plugins/mineru/src/index.ts" lines="345-354" hash="98febc4a218d" blob="c1ea4e1b5397" */}
+
+## 作业各自独立，同时跑
+
+一次交 N 篇就是 N 个独立的单文件云端任务，各自申请上传位、上传、轮询、下载，谁先完谁先写账。不合进一个云端批：三个文件合进一个批全部解析失败，
+挂掉的拆成独立任务重交两个都成功；5 个独立任务同时跑 5 个全过。数据与取舍见轨迹卡[全并行](/trajectory/2026-09-18-parallel-and-serial-overturned)。
+
+{/* ref file="../plugins/mineru/src/index.ts" lines="375-380" hash="f9b628c77252" blob="c1ea4e1b5397" */}
+
+## 失败只记账；recover 在本地补解包
+
+解包那一步失败（围栏拒了某条 entry、提交时 outDir 被占、磁盘读写出错）时，作业记成 `failed`，账上写着归档路径。
+`recover` 用这份归档重走解包：不申请上传位、不上传、不轮询、不花额度。没走到下载就失败的作业账上没有归档，`recover` 直接拒。
+`recover` 只是把本地没做完的那一步做完，不是对云端的重试：
+
+{/* ref file="../plugins/mineru/src/index.ts" lines="242-273" hash="c1f0a8254d72" blob="c1ea4e1b5397" */}
+
+失败原因要带上 `cause`：`fetch` 失败时 `String(err)` 只有 `TypeError: fetch failed`，真正的原因（`ECONNRESET`、连接超时）在
+`err.cause` 里，拼进作业的 `error` 与日志。mineru.net 的连接偶尔会断，与并发无关，应对办法是如实记下，不是限流：
+
+{/* ref file="../plugins/mineru/src/index.ts" lines="119-127" hash="f19fb3206164" blob="c1ea4e1b5397" */}
+
+## 作业账的写法
+
+新作业入列、每次状态推进、云端进度变化都会重写整张作业账。几条作业同时推进时，同一个 `jobs` 文档被并发改名，在 Windows 上报过
+`EPERM` / `ENOENT`，所以写盘排成一条链，每次写的是轮到那一刻的整张账。写失败不抛（后台的作业还在跑），只记下最近一次错误，
+`submit` 看它决定拒不拒：
+
+{/* ref file="../plugins/mineru/src/index.ts" lines="468-480" hash="fd1a5e7a93a5" blob="c1ea4e1b5397" */}
+
+进度只记账、不推事件：云端报的页数变了才写，没变不写。界面上的事件只有到终态那一条 `job-settled`：
+
+{/* ref file="../plugins/mineru/src/index.ts" lines="437-445" hash="de356fd9efc4" blob="c1ea4e1b5397" */}
+
+## 启动对账与卸载打断：只标记，不重跑
+
+启动时读回作业账，上次没到终态的作业（包括还没开始的）标成 `interrupted`，原因写进 `error`；插件卸载时中止还在跑的请求，
+没到终态的一并标上。不丢账、不假装还在跑，也不自动重新提交：
+
+{/* ref file="../plugins/mineru/src/index.ts" lines="482-503" hash="04bd964dd761" blob="c1ea4e1b5397" */}
+
+## 轮询的三个数
+
+5 秒问一次；云端在解析时，状态与已解析页数 10 分钟不动判停滞；连排队在内 1 小时判超时。怎么判在云端客户端，数值是作业机定的：
+长文档与低优先级排队不能被一个短的墙钟误判为失败（误判的代价是调用方重新提交、同样的页数再扣一次额度），卡死的也不能无限等。
+取舍见轨迹卡[看进度判超时](/trajectory/2026-09-17-poll-by-progress)。
+
+{/* ref file="../plugins/mineru/src/index.ts" lines="18-20" hash="806bfb946819" blob="c1ea4e1b5397" */}
+
+## 用到的服务从提供方上下文取
+
+方法里的 `this.ctx` 是调用方的上下文。作业用到的定时器、写账、清理都登记在插件自己的上下文 `providerContext` 上，
+调用方卸载带不走一条还在跑的转换。命令总线、设置、数据三个服务写在 `static inject` 里，缺一个插件就不加载，比加载之后缺一部分功能好查；
+用的时候每次从 `providerContext` 上取，不存进类字段（存进去的引用跟不上调用方的扩展，见轨迹卡
+[重写删掉了三样看不见的东西](/trajectory/2026-09-08-wall-rewrite-drops)）：
 
 {/* ref file="../plugins/mineru/src/index.ts" lines="129-133" hash="e61ecfbf45a5" blob="c1ea4e1b5397" */}
 
-skills 不进硬依赖——没装说明书插件的 home 里作业机照常加载：
+说明书插件是局部注入，没装它的 home 里作业机照常加载：
 
 {/* ref file="../plugins/mineru/src/index.ts" lines="213-215" hash="9cc8f78c4e7c" blob="c1ea4e1b5397" */}
 
-## 怎么单独测
+## 怎么测
 
-`pnpm test`（先 `pnpm build`，再 `node --test "tests/*.test.mjs"`）。打这一层的是
-`tests/job-runner.test.mjs`：真 cordis Context + 三个假邻居服务（settings / data / commands）+
-假内核，云端是替身 fetch（报名、PUT、轮询、下载四个动作全在内存里，零网络零额度），PDF 是随手
-写的假文件。它证明四点：一条作业的全链与回执字段；同一 outDir 的三种拒法（同批撞车、
-前一条在跑、前一条已 done 但目录非空）；显式覆盖时旧产物整份进备份；提交点撞车后
-`pdf2md.recover` 凭归档补上且**云端一次都没再问**。
-
-能单测的两块被刻意切在服务外面——云端客户端与解包都是纯函数模块，不依赖 cordis，
-这正是依赖方向单向带来的好处。
+仓根 `pnpm check`（插件包里先构建，再 `node --test "tests/*.test.mjs"`）。这一层由 `tests/job-runner.test.mjs` 覆盖：真 cordis 上下文，
+设置、数据、命令总线三个替身服务加一个替身内核；云端是换掉的全局 `fetch`（申请上传位、上传、轮询、下载都在内存里，不联网、不花额度），
+PDF 是随手写的假文件。它证明四件事：一条作业走完全过程、回执字段齐全；同一 outDir 的三种拒绝（同批冲突、前一条在跑、前一条已完成但目录非空）；
+显式覆盖时旧产物整个进备份；提交点冲突后 `recover` 凭归档补上，而且云端一次都没再问。四条命令的处理函数没有测试。
 
 ## 代码地图
 
-- **在哪**：`src/index.ts`，一个文件
+- **在哪**：`plugins/mineru/src/index.ts`，一个文件
 - **先读**：`GwbPdf2mdApi`（对外接口）→ `submit` → `runFullChain` → `recover`
 - **读序**：`[Service.init]`（登记命令与设置、启动对账）→ `submit`（`newQueuedJobs` → `claimOutDirs` →
   `assertSubmissionsAcceptable` → `enterJobsIntoLedger`，再逐条 `startInBackground`）→
   `runFullChain`（`uploadToCloud` → `pollCloudResult` → `downloadAndExtractOrSettleFailed`）→
-  `recover`（凭归档重解）→ `recordCloudProgress`（进度记账）→ `updateJobAndPersist`（状态推进 + 终态 emit）→
-  `writeLedger` / `loadLedgerMarkingLeftoversInterrupted`（账的排队写与对账）
+  `recover`（凭归档重解）→ `recordCloudProgress`（进度写账）→ `updateJobAndPersist`（状态推进、终态事件）→
+  `writeLedger` / `loadLedgerMarkingLeftoversInterrupted`（写账与启动对账）
 - **可跳过**：`dist/`（构建产物：esbuild 输出 js、tsc 输出类型声明）、`describeErrorWithCause`（把 `cause` 拼进失败原因的几行）、
   `extractOptionsFor` / `jobFieldsFromExtractResult`（把作业记录转成解包参数、再把解包结果转回作业字段）
-
-## 设计点（错了难改的那几条）
-
-**submit 秒回是判据不是偏好**：命令是页面等着的一次调用，分钟级的云端解析绝不能在线等——
-作业号数组先回，成败看 status。秒回的边界在「云端」：本地验参与**把 queued 落进作业账**
-仍在线等（毫秒级）——回了作业号就是「跨重启查得到」的承诺，账落不了盘整批拒、撤回入列：
-
-{/* ref file="../plugins/mineru/src/index.ts" lines="221-240" hash="f1b71fc8c3e7" blob="c1ea4e1b5397" */}
-
-**一个 outDir 一次只落一个作业**：占位发生在**第一个 await 之前**（两个并发 submit 不能都验到
-「这个 outDir 空着」），占位失败整批当场拒、一条账都不落、云端一次都不问。同批里两条瞄着同一个
-目录、或撞上还在跑的作业，报的话分别说清是哪种，并点名是谁占着。到终态就放掉这一格：
-下一份产物可以进来，那一关归「已有产物」管：
-
-{/* ref file="../plugins/mineru/src/index.ts" lines="310-332" hash="64d57f3520d9" blob="c1ea4e1b5397" */}
-
-**已有产物要显式覆盖**：outDir 不是目录、或里面已经有东西而这条没带 `overwrite`——提交阶段就拒
-（不排一条注定在提交点失败的作业）；提交点还会再查一遍，那才是权威的（本地验完到云端跑完隔着
-分钟级，中间谁都可能往里放东西）。覆盖时旧产物整份进工作根备份，作业账上记 `commit` 与
-`backup`，回执里说得清这次是什么结果：
-
-{/* ref file="../plugins/mineru/src/index.ts" lines="345-354" hash="98febc4a218d" blob="c1ea4e1b5397" */}
-
-**作业各自独立、全并行，不聚合进一个云端批**：一次 submit 的 N 篇就是 N 个独立的单文件任务，
-报名、上传、轮询、下载各跑各的，谁先完谁先落账。两件事都有实测背书——云端对并发单任务
-零挑剔（5 路全并发 5/5 过），而把多文件**聚合进一个 batch_id** 会连带解析失败（同样的文件
-聚合 3/3 挂、拆开 2/2 过），判据见[那张卡](/trajectory/2026-09-18-parallel-and-serial-overturned)：
-
-{/* ref file="../plugins/mineru/src/index.ts" lines="375-380" hash="f9b628c77252" blob="c1ea4e1b5397" */}
-
-**失败只管记账，重解包那扇门在本地**：解包那一段失败（围栏拒、提交点撞车、盘上 I/O）时，作业落
-`failed` 并**把归档路径记进账**——云端那份结果已经在盘上了，`pdf2md.recover` 凭它重走一遍解包链，
-不重新报名、不上传、不轮询、不再花额度。没走到下载就失败的（云端解析失败、轮询超时）账上没有
-归档，recover 会直说无路可走。**两件事都不动六态的含义**：recover 是把本地没走完的那一步走完，
-不是对云端的重试：
-
-{/* ref file="../plugins/mineru/src/index.ts" lines="242-273" hash="c1f0a8254d72" blob="c1ea4e1b5397" */}
-
-**作业账写盘排队**：进度、状态推进、新作业入账都会触发写盘，多作业并行推进时同一个 `jobs`
-文档并发 rename 在 Windows 上 `EPERM` / `ENOENT`。写盘挂到一条链上，每次写轮到那一刻的整张账——
-这是并行世界里唯一保留下来的串行：
-
-{/* ref file="../plugins/mineru/src/index.ts" lines="468-480" hash="fd1a5e7a93a5" blob="c1ea4e1b5397" */}
-
-**失败原因带上 cause**：`fetch` 失败时 `String(err)` 只有一句 `TypeError: fetch failed`，
-真原因（`ECONNRESET`、连接超时）在 `err.cause` 里——拼进作业的 `error` 与日志。mineru.net 的
-连接偶发抖动与并发无关（单发也撞、重试即过），防护靠如实记账，不靠限流：
-
-{/* ref file="../plugins/mineru/src/index.ts" lines="119-127" hash="f19fb3206164" blob="c1ea4e1b5397" */}
-
-**作业用到的资源登记在提供方，不登记在消费者**：方法里的 `this.ctx` 是消费者的——定时器、记账、清理
-全部经 `this.providerContext`，消费者卸载不该带走一个还在跑的转换（上面「依赖的接口」那段引用过）。
-
-**启动对账与卸载打断，只标不重跑**：重启后上次留下的非终态作业（含还没启动的）标 `interrupted`
-（理由写进 error），插件卸载时 abort 还在跑的控制器、把非终态一并标上——不丢账、不假装还在跑，
-也**不**自动重提：
-
-{/* ref file="../plugins/mineru/src/index.ts" lines="482-503" hash="04bd964dd761" blob="c1ea4e1b5397" */}
-
-**进度只记账，不推事件**：轮询每 5 秒一问，云端报的页数变了才写盘，没变不写；界面事件仍只有
-落定那一条 `job-settled`——看进度的人查 status，插件不把每一轮回包转发成事件：
-
-{/* ref file="../plugins/mineru/src/index.ts" lines="437-445" hash="de356fd9efc4" blob="c1ea4e1b5397" */}
-
-**轮询的三个数定在这层**：5 秒一问、云端干活时进度停滞 10 分钟判失败、连云端排队总上限
-1 小时。怎么判停滞在[云端客户端](/docs/mineru-client)；数值是作业机的取舍——长文档与低优先级
-排队不该被墙钟误杀（误杀的代价是调用方重提、同一份页数再扣一次额度），卡死的也不该无限等。
-作业各跑各的，谁也不占谁的轮询上限：
-
-{/* ref file="../plugins/mineru/src/index.ts" lines="18-20" hash="806bfb946819" blob="c1ea4e1b5397" */}
-
-**设置项必须在 init 里 define**：不声明的话 get 永远回 undefined——实机撞过一轮，症状是
-「token 明明在 settings.json 里，命令却报没配」（见[那面墙](/trajectory/2026-09-08-wall-rewrite-drops)）。

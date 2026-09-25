@@ -1,9 +1,22 @@
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
-/* 状态点的样式随格式包发,一行引进来 */
+/* 钉码状态点的样式随格式包发布，一行引进来 */
 @import '@godcreator/docfirst-workflow/fumadocs/light.css';
 
 html {
   scrollbar-gutter: stable;
+}
+
+/* 接缝图（src/components/seam-map.tsx）的颜色：中性色跟 fumadocs 主题走，强调色深浅各给一套 */
+:root {
+  --seam-accent: #c2410c;
+  --seam-accent-soft: color-mix(in srgb, var(--seam-accent) 14%, transparent);
+  --seam-line: color-mix(in srgb, var(--color-fd-foreground) 50%, transparent);
+  --seam-frame: color-mix(in srgb, var(--color-fd-foreground) 38%, transparent);
+  --seam-badge: var(--color-fd-background);
+}
+
+.dark {
+  --seam-accent: #fb923c;
 }

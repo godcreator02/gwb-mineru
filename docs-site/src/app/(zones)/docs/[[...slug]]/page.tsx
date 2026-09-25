@@ -10,7 +10,7 @@ export default async function Page({ params }: { params: Promise<{ slug?: string
 
   const MDX = page.data.body
   return (
-    <DocsPage toc={page.data.toc}>
+    <DocsPage toc={page.data.toc} full={page.data.full}>
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsBody>
         <MDX components={getMDXComponents()} />

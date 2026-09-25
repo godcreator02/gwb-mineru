@@ -1,95 +1,71 @@
 ---
-title: 云端客户端：MinerU v4 三动作
-description: src/core/mineru.ts——申请上传位、PUT 上传、轮询到终态；纯函数模块，业务错翻成照着能做的话、HTTP 异常如实抛
+title: 云端客户端：跟 MinerU 说的三句话
+description: src/core/mineru.ts——申请上传位、上传、轮询到终态；停滞与超时为什么记成 failed 而不抛错；回包里的错误怎么认；不依赖 gwb 与 cordis
 ---
 
-# 云端客户端：MinerU v4 三动作
+**本页回答**：跟 MinerU 云端的三次交互各自怎么走；什么算终态、什么算停滞；停滞与超时为什么记成 `failed` 而不是抛错；
+回包里的错误怎么认。它在系统里的位置是[首页](/docs)的接缝 ⑦ 与 ⑨。
 
-**本页回答**：MinerU 云端那三次握手各自怎么走；什么算终态、什么算停滞；超时为什么是「结算为
-failed」而不是抛错；回包里的错误怎么认。
+这个模块只认调用方递进来的 token 与 batchId：不知道作业、作业账与作业号（进度交给 `onProgress` 之后怎么记是[作业机](/docs/job-runner)的事），
+不知道 token 从哪来，也不知道结果怎么写到磁盘上（拿到 `full_zip_url` 之后是[解包](/docs/extract)的事）。它只用全局 `fetch`、`AbortSignal`
+与 `node:fs` 读文件，不依赖 gwb 与 cordis。
 
-## 管什么
+## 三次交互
 
-三个动作：`requestUpload`（申请上传位，回 `[batch_id, upload_url]`）、`upload`（PDF 二进制
-PUT 到预签名 URL）、`poll`（轮询到终态，沿途把非终态回包交给回调）。外加 `isDone` 判定、
-`MineruError` 业务错、`MAX_FILE_BYTES` 云端单文件上限。
+`requestUpload` 申请上传位，回 `[batchId, uploadUrl]`；`upload` 把 PDF 原样 `PUT` 到预签名地址（不带 `Content-Type`，接口规格如此）；
+`poll` 反复问解析结果，直到终态。另外导出判定 `isDone`、错误类型 `MineruError` 与单文件上限 `MAX_FILE_BYTES`（200MB，作业机在
+`submit` 时先在本地挡）。
 
 {/* ref file="../plugins/mineru/src/core/mineru.ts" lines="51-84" hash="2a597c33a3ec" blob="8aab970ebcb2" */}
 
-## 不知道什么
+MinerU 这组接口收的是「一批多个文件」，这里一条作业一个文件，`files` 数组长度恒为 1。并行靠同时跑多个独立任务，不靠合批：
+三个文件合进一个批全部解析失败，拆开重交就成功，见轨迹卡[全并行](/trajectory/2026-09-18-parallel-and-serial-overturned)。
+申请时写死 vlm 模型、开公式与表格、语言 `ch`（云端缺省，中英混合）：
 
-- 不知道作业、账、作业号——那是[作业机](/docs/job-runner)的事，这里只认调用方递进来的
-  token 与 batchId；进度交给 `onProgress` 回调之后记不记、怎么记也是作业机的事
-- 不知道 token 从哪来——settings 那层的事
-- 不知道结果怎么落盘——拿到 `full_zip_url` 后的事在[解包与语言](/docs/extract)
+{/* ref file="../plugins/mineru/src/core/mineru.ts" lines="53-66" hash="2fef6b2fd56d" blob="8aab970ebcb2" */}
 
-## 数据结构
-
-解析结果与解析中的进度。**字段名对位 API 原始 JSON 键，不改写**——`full_zip_url` /
-`extract_progress` 这些下划线名字是 MinerU 的，不是本仓的：
+解析结果的字段名照搬 API 原始的 JSON 键，不改写——`full_zip_url`、`extract_progress` 这些下划线名字是 MinerU 的：
 
 {/* ref file="../plugins/mineru/src/core/mineru.ts" lines="32-49" hash="1e7fd4ce7cc6" blob="8aab970ebcb2" */}
 
-## 提供的接口
+## 轮询：停滞与超时记成 failed
 
-| 名字 | 是什么 |
-| --- | --- |
-| `requestUpload(token, name)` | 申请上传位，回 `[batchId, uploadUrl]` |
-| `upload(uploadUrl, pdfPath)` | PUT 二进制，不带 Content-Type（接口规格如此） |
-| `poll(token, batchId, options)` | 轮询到终态；被打断抛 AbortError，停滞或超总上限**结算为 failed** |
-| `isDone(result)` | `state === 'done'` |
-| `MineruError` | 回包带业务错误码（`code` / `msgCode` 非 0）或形状不对时抛 |
-| `MAX_FILE_BYTES` | 云端单文件上限 200MB，作业机在 submit 时本地先挡 |
-
-轮询的旋钮全在调用方手里——节奏、停滞上限、总上限、进度回调、打断信号：
+轮询的节奏、停滞上限、总上限、进度回调与中止信号都由调用方给：
 
 {/* ref file="../plugins/mineru/src/core/mineru.ts" lines="86-97" hash="a5863ffb53b4" blob="8aab970ebcb2" */}
 
-## 依赖的接口
-
-只有全局 `fetch` 与 `AbortSignal`，外加 `node:fs` 读文件。零 gwb 依赖、零 cordis 依赖——
-这是个纯 node 模块，拿起就走。
-
-## 怎么单独测
-
-纯函数模块，喂假 `fetch` 就能直测：排队不判停滞、解析中页数不动判停滞、总上限、几种错误回包
-的翻译。仓里没有单测设施，这组验证落在 `probes/2609172224_poll-and-live-run/`（冻结产物 +
-零依赖脚本）；真链路要真 token、真云端，见[作业机](/docs/job-runner)怎么单独测。
-
-## 代码地图
-
-- **在哪**：`src/core/mineru.ts`，一个文件
-- **先读**：`poll`
-- **读序**：`requestUpload` → `upload` → `poll`（循环体：`readResponseData` 取回包 → `toFileResult` →
-  终态判断 → 交 `onProgress` → 停滞与总上限判断 → `sleepUnlessAborted` 等下一轮）
-- **可跳过**：`sleepUnlessAborted` / `parseJsonRecord` / `asRecord` 这类几行的小函数
-
-## 设计点（错了难改的那几条）
-
-**超时不抛，结算为 failed，而且分两道**：云端在干活（`running` / `converting`）时，状态与
-已解析页数一段时间都不动才算**停滞**；排队（`waiting-file` / `pending`）不判停滞——排多久是
-云端配额与优先级的事，只受连排队在内的**总上限**管。两种都不是异常，是这条解析链的一种终局，
-err_msg 写明是哪一种、并提醒云端可能还在跑：
+判失败分两道。云端在解析（`running` / `converting`）时，状态与已解析页数一段时间都不动才算停滞；排队（`waiting-file` / `pending`）
+不判停滞，排多久是云端额度与优先级的事，只受连排队在内的总上限管。两种都不是异常，是这次解析的一种结局：回一份 `state: 'failed'`
+的结果，`err_msg` 写明是停滞还是超时，并提醒云端可能还在跑：
 
 {/* ref file="../plugins/mineru/src/core/mineru.ts" lines="117-134" hash="dc13213c1abb" blob="8aab970ebcb2" */}
 
-**先认回包，再认状态码**：token 错走的是 HTTP 401、错误码的键叫 `msgCode`；任务不存在之类
-走 HTTP 200、键叫 `code`。只看状态码就会把 token 错吞成一句「HTTP 401」（形状实测见
-`probes/2609172223_api-error-shapes/`）。认得出的错误码附一句调用方照着就能做的话，认不出
-回包的非 2xx 才报 HTTP 错：
-
-{/* ref file="../plugins/mineru/src/core/mineru.ts" lines="150-162" hash="18a420941d14" blob="8aab970ebcb2" */}
-
-{/* ref file="../plugins/mineru/src/core/mineru.ts" lines="14-22" hash="cdae642f8068" blob="8aab970ebcb2" */}
-
-**被打断要立刻醒**：插件卸载 abort 时，`sleepUnlessAborted` 里那个监听器先于定时器把 promise 拒掉——
-不等满一轮间隔：
+等下一轮时收到中止信号会立刻醒，不等满一个间隔；已经发出去的请求不接这个信号，靠各自的超时结束：
 
 {/* ref file="../plugins/mineru/src/core/mineru.ts" lines="136-148" hash="8c3ee0d779cf" blob="8aab970ebcb2" */}
 
-**接口那组是一批多文件，这个件一作业一文件**：申请上传位的 `files` 数组长度恒为 1，语义不变——
-聚合进一个 batch_id 曾被实测否决（同样文件聚合 3/3 解析失败、拆开 2/2 过，见
-[那张卡](/trajectory/2026-09-18-parallel-and-serial-overturned)），并行靠 N 个独立任务实现，
-不靠批聚合。申请时钉死 vlm 模型、公式表格都开、语言 `ch`（云端缺省，中英混合）：
+## 先认回包，再认状态码
 
-{/* ref file="../plugins/mineru/src/core/mineru.ts" lines="53-66" hash="2fef6b2fd56d" blob="8aab970ebcb2" */}
+token 错时 MinerU 回 HTTP 401，错误码的键叫 `msgCode`；任务不存在之类回 HTTP 200，键叫 `code`。只看状态码会把 token 错变成一句
+「HTTP 401」，所以先认回包：`code` 或 `msgCode` 不是 0 就抛 `MineruError`，认不出回包的非 2xx 才报 HTTP 错。两种回包的形状实测见
+`probes/2609172223_api-error-shapes/`。
+
+{/* ref file="../plugins/mineru/src/core/mineru.ts" lines="150-162" hash="18a420941d14" blob="8aab970ebcb2" */}
+
+认得出的错误码附一句照着就能做的话：
+
+{/* ref file="../plugins/mineru/src/core/mineru.ts" lines="14-22" hash="cdae642f8068" blob="8aab970ebcb2" */}
+
+## 怎么测
+
+这个模块没有直接的单测。`tests/job-runner.test.mjs` 换掉全局 `fetch`，从作业机那一侧走过三次交互，但替身第一次轮询就回终态，
+所以排队不判停滞、解析中页数不动判停滞、总上限这几条判断没有单测；它们的证据在 `probes/2609172224_poll-and-live-run/`
+（冻结的输入与不依赖任何包的脚本）。真云端要真 token，只在 `probes/` 的实验里跑过。
+
+## 代码地图
+
+- **在哪**：`plugins/mineru/src/core/mineru.ts`，一个文件
+- **先读**：`poll`
+- **读序**：`requestUpload` → `upload` → `poll`（循环体：`readResponseData` 取回包 → `toFileResult` →
+  终态判断 → 交给 `onProgress` → 停滞与总上限判断 → `sleepUnlessAborted` 等下一轮）
+- **可跳过**：`parseJsonRecord`、`asRecord` 这类几行的小函数

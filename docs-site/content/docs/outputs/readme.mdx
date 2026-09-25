@@ -1,47 +1,25 @@
 ---
 title: README（仓根正本）
-description: 仓根 README.md 由这一页生成——改这里，跑 docfirst render，一起提交
+description: 仓根 README.md 由这一页生成——改这里，运行 pnpm doc:render，一起提交
 ---
 
-# gwb-mineru
+**gwb-mineru**：gwb 工作台的插件，把 PDF 交给 MinerU 云端转成 markdown。
 
-MinerU 转换插件：提供 **pdf2md 服务**（`ctx.gwbPdf2md`）——PDF 经 MinerU 云端转 markdown，
-以作业的形式运行，是 gwb 工作台的插件。
-
-**插件名与服务名不对应是有意的**：插件名说谁在干活（MinerU 引擎），服务名与命令前缀
-（`pdf2md.*`）说干的是什么。消费方 inject 的永远是 `gwbPdf2md`。
-
-**零库概念**——输入一个 PDF 绝对路径、一个输出目录，产出完整 markdown + `images/`
-原样放进 outDir。不知道论文库存在：gwb-paper-fetch 的说明书让 agent 直接调 `pdf2md.submit`
-转论文，「一个孤立 PDF 想要 markdown」也走这条命令。
-
-- **作业模式**：`submit` 收数组、秒回作业号数组（命令是页面等着的一次调用，分钟级云端解析
-  不能在线等）；作业各自独立**全并行**（一次交 N 篇就是 N 个独立任务，云端各转各的）；
-  状态机 `queued→uploading→running→done|failed|interrupted`；解析中带云端进度
-  （已解析页 / 总页）；作业账经 gwbData 落盘（写盘排队）、重启标 interrupted
-- **一个 outDir 一次只落一个作业**：提交时同步占位，同批两条冲突或与在跑的作业冲突，整批当场拒；
-  已有产物默认拒，要覆盖得显式 `overwrite`（旧产物先整份备份进工作根）
-- **产物整份出现**：解包前全部 entry 过围栏（盘符、`..`、反斜杠、绝对路径、真实路径逃逸一律
-  结构化拒，一条不合格整包不落盘），解进工作根 staging 后整体 rename 进 outDir；原始 zip 在
-  工作根留一份归档，解包失败/中断后 `pdf2md.recover` 凭它零云端重解
-- **设置**：`mineru` 节一个 `token`（secret）
-- **事件**：落定时经内核 emit 通道推界面一条 `job-settled`
-
-MinerU 客户端与 zip 解包沿用老仓 god-papers 的接口规格（只作参考）；语言判定（CJK 占比）
-是通用文本分析，放在这个插件里。
+给一个 PDF 绝对路径和一个输出目录，插件立即返回作业号，在后台完成申请上传位、上传、轮询、下载、解包，
+把完整 markdown 与 `images/` 原样放进那个目录。别的插件 inject 服务 `gwbPdf2md`，agent 调命令 `pdf2md.submit`、
+`pdf2md.status`、`pdf2md.jobs`、`pdf2md.recover`。插件叫 gwb-mineru、服务叫 pdf2md，名字不对应是有意的。
 
 ## 跑起来
 
 ```powershell
 pnpm install
-pnpm check          # typecheck，再构建并跑单测（假 zip + 云端替身，不联网、不花额度）
-pnpm build          # tsc 只出类型声明，esbuild 出 js 并把 adm-zip 打包进 dist/
+pnpm check          # 仓根：typecheck，再构建并跑单测（替身云端与现场生成的 zip，不联网、不花额度）
+pnpm build          # 插件包在 plugins/mineru/，esbuild 输出 js 并把 adm-zip 打包进 dist/
 ```
 
-装进 home：`plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`。用之前在设置里配 `mineru` 节的
-`token`（mineru.net 的 API 管理页创建）。
+装进 home：`plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`。用之前在设置节 `mineru` 里配 `token`（mineru.net 的 API 管理页创建）。
 
 ## 文档
 
-文档站在 `docs-site/`：`cd docs-site && pnpm dev`，看 `http://localhost:4317`。这份 README 是生成物，
-正本是 `docs-site/content/docs/outputs/readme.mdx`。
+文档站在 `docs-site/`：`cd docs-site; pnpm dev`，看 `http://localhost:4317`。首页有一张接缝图讲插件怎么分块、跟外面怎么连。
+这份 README 是生成物，正本是 `docs-site/content/docs/outputs/readme.mdx`。

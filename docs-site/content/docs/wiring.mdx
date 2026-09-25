@@ -1,0 +1,76 @@
+---
+title: 插件之间怎么连
+description: '@godcreator/gwb-mineru 提供的服务、命令、事件与说明书；注入了哪些服务、必需还是局部注入、peer 怎么写、缺了会怎样；按名字调用与约定通道'
+---
+
+**本页回答**：本仓插件提供哪些服务、命令与事件；注入了哪些服务、是必需还是局部注入、peer 怎么写；按名字调用了别的插件的哪些命令、用了哪些约定通道。
+
+## @godcreator/gwb-mineru
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | `gwbPdf2md` | `submit` / `recover` / `get` / `list`，类型 `GwbPdf2mdApi`，见[用法](/docs/usage) |
+| 命令 | `pdf2md.submit` | 提交一批转换作业，立即返回作业号 |
+| 命令 | `pdf2md.status` | 查一条作业 |
+| 命令 | `pdf2md.jobs` | 全部作业，新的在前 |
+| 命令 | `pdf2md.recover` | 凭盘上归档重新解包，不花云端额度 |
+| 事件 | `job-settled` | 作业到 `done` / `failed` 时经内核推给页面，`source` 是 `gwb-mineru` |
+| 说明书 | `pdf2md` | 包里的 `skills/pdf2md/SKILL.md` |
+
+{/* has file="../plugins/mineru/src/index.ts" text="gwbPdf2md: GwbPdf2mdApi" */}
+
+{/* has file="../plugins/mineru/src/index.ts" text="name: 'pdf2md.submit'" */}
+
+{/* has file="../plugins/mineru/src/index.ts" text="name: 'pdf2md.status'" */}
+
+{/* has file="../plugins/mineru/src/index.ts" text="name: 'pdf2md.jobs'" */}
+
+{/* has file="../plugins/mineru/src/index.ts" text="name: 'pdf2md.recover'" */}
+
+{/* has file="../plugins/mineru/src/index.ts" text="type: 'job-settled'" */}
+
+{/* has file="../plugins/mineru/skills/pdf2md/SKILL.md" text="name: pdf2md" */}
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`static inject`） | `^0.5.2` | 登记四条 `pdf2md.*` 命令 | 插件不加载 |
+| `gwbSettings` | `@godcreator/gwb-settings` | 必需（`static inject`） | `^0.3.5` | 声明并读取 token | 插件不加载 |
+| `gwbData` | `@godcreator/gwb-data` | 必需（`static inject`） | `^0.1.9` | 作业账文档 `jobs` 的读写 | 插件不加载 |
+| `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `^0.4.7`，`optional: true` | 登记包里的说明书 | 作业机照常加载，agent 读不到说明书 |
+| `gwbKernel` | `@godcreator/gwb-kernel-desktop` | 不写进 `inject`，`requireKernel` 取 | `^0.7.2` | `emit` 推 `job-settled` | 不在 gwb 内核里运行时，第一次推事件就抛错 |
+
+peer 里另有 `cordis`（`^4.0.0-rc.10`）：服务类按值继承它的 `Service`。
+
+{/* has file="../plugins/mineru/src/index.ts" text="static inject = ['gwbCommands', 'gwbSettings', 'gwbData']" */}
+
+{/* has file="../plugins/mineru/src/index.ts" text="this.providerContext.inject(['gwbSkills']" */}
+
+{/* has file="../plugins/mineru/src/index.ts" text="requireKernel(this.providerContext).emit(" */}
+
+{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.7.2&quot;" */}
+
+{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;^0.5.2&quot;" */}
+
+{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-data&quot;: &quot;^0.1.9&quot;" */}
+
+{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-settings&quot;: &quot;^0.3.5&quot;" */}
+
+{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-skills&quot;: &quot;^0.4.7&quot;" */}
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| 网络 | MinerU 云端 | `https://mineru.net/api/v4` 的 `/file-urls/batch`、`/extract-results/batch/{batchId}`，外加预签名上传地址与结果 zip 地址 | 申请上传位、上传 PDF、轮询、下载结果 |
+| 磁盘 | 调用方 | outDir 与它旁边的工作根 `.<outDir 名>.pdf2md/` | 产物、归档、staging、备份、提交 journal，见[解包](/docs/extract) |
+| 约定 | gwb-paper-fetch 的说明书 | `pdf2md.submit` | 论文进库的转换一步让 agent 直接调这条命令；本插件不认识它 |
+
+{/* has file="../plugins/mineru/src/core/mineru.ts" text="const API_BASE = 'https://mineru.net/api/v4'" */}
+
+{/* has file="../plugins/mineru/src/core/extract.ts" text="const WORK_ROOT_SUFFIX = '.pdf2md'" */}
+
+本插件不按命令名调用别的插件的命令。

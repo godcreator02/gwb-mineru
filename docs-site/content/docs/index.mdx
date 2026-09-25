@@ -1,0 +1,171 @@
+---
+title: gwb-mineru：把 PDF 交给 MinerU 转成 markdown
+description: 插件做什么、对外给什么、依赖谁、刻意不做什么；一张接缝图把作业机、云端客户端、解包三块和外面的插件、MinerU 云端、磁盘切开，按编号逐条讲
+full: true
+---
+
+**本页回答**：这个插件做什么；它跟外面的插件、MinerU 云端、磁盘之间有哪几条接缝，每条传什么、谁负责、测试怎么覆盖；
+三块代码各自对外能做什么；它刻意不做什么。
+
+## 它做什么
+
+给一个 PDF 的绝对路径和一个输出目录（下文叫 outDir），插件把 PDF 交给 MinerU 云端解析，再把结果 zip 里的完整
+markdown 与 `images/` 原样放进 outDir。全页用同一个例子：把 `D:/papers/a.pdf` 转进 `D:/papers/a`。
+
+MinerU 解析一篇要几十秒到几分钟，而命令是调用方等着回执的一次调用，所以插件做成作业：`submit` 只做本地检查、
+占住 outDir、把作业写进作业账，然后立即返回作业号；每条作业在后台独立走完申请上传位、上传、轮询、下载、解包，
+到了终态再推一条 `job-settled` 事件。调用方查 `pdf2md.status` 或等事件，就知道 `D:/papers/a/full.md` 出来没有。
+
+插件叫 gwb-mineru（说干活的是 MinerU），服务与命令叫 pdf2md（说干的是什么），名字不对应是有意的，理由见轨迹卡
+[名不对应](/trajectory/2026-09-08-engine-vs-function-naming)。
+
+## 一张图看全
+
+<SeamMap />
+
+插件分三块代码：作业机（`src/index.ts`）管作业的一生，云端客户端（`src/core/mineru.ts`）只会跟 MinerU 说三句话，
+解包（`src/core/extract.ts`）只会把一份 zip 安全地变成 outDir 里的文件。后两块互相不认识，都不依赖 cordis，
+是作业机手里的两个工具；依赖只从作业机往下走。
+
+{/* tree dir="../plugins/mineru/src" depth="2" hash="f88732382aab" */}
+
+## 接缝逐条讲
+
+### ① 消费方插件 → 服务 `gwbPdf2md`
+
+别的插件写 `inject: ['gwbPdf2md']`，拿到 `submit(files)`、`recover(id)`、`get(id)`、`list()` 四个方法。
+`submit([{ input: 'D:/papers/a.pdf', outDir: 'D:/papers/a' }])` 回一个作业数组，`state` 是 `queued`——返回不是完成。
+接口与作业记录的形状是本包导出的 `GwbPdf2mdApi` 与 `Pdf2mdJob`，消费方从发布的 `.d.ts` 读：
+
+{/* has file="../plugins/mineru/src/index.ts" text="gwbPdf2md: GwbPdf2mdApi" */}
+
+作业机负责：整批检查（有一条不合格整批拒、一条账都不写）、同一个 outDir 同一时间只归一条作业、作业账写进磁盘之后才返回。
+它不负责：出了 outDir 之后文件怎么命名、放进哪个库——那是调用方的事。`tests/job-runner.test.mjs` 用真 cordis 上下文加
+三个替身服务直接调这四个方法，覆盖全过程、三种 outDir 冲突、覆盖已有产物、提交点冲突后凭归档恢复。
+
+### ② 命令总线 → 四条命令
+
+agent 经 MCP 入口、页面经 `window.gwb.command` 调的是命令：`pdf2md.submit { files }`、`pdf2md.status { id }`、
+`pdf2md.jobs`、`pdf2md.recover { id }`。作业机在 init 里经 `gwbCommands.register` 登记它们，命令处理函数只检查参数形状、
+再转给服务的对应方法，回执是作业记录（`pdf2md.jobs` 回 `{ count, jobs }`）。命令总线写在 `static inject` 里，缺了它插件不加载。
+四条命令的参数与回执逐条写在[用法](/docs/usage)；命令处理函数本身没有测试，测试替身的 `register` 什么也不做。
+
+### ③ 设置插件 → token
+
+凭据是一个 secret 设置项：作业机在 init 里 `define` 它，`submit` 每次调用时读一次，改了值不用重新加载插件。
+节名 `mineru` 由设置插件按条目 id 算出。不在 init 里 `define`，`get` 永远回 undefined 且不报错——
+踩过这个坑，见轨迹卡[重写删掉了三样看不见的东西](/trajectory/2026-09-08-wall-rewrite-drops)。
+
+{/* has file="../plugins/mineru/src/index.ts" text="key: 'token'" */}
+
+设置插件写在 `static inject` 里，缺了插件不加载；token 没配时 `submit` 当场拒。测试替身的 `get('token')` 回一个假值。
+
+### ④ 数据插件 → 作业账
+
+作业账是数据插件管的一份文档 `jobs`，内容是 `{ jobs: Pdf2mdJob[] }`。每次状态推进、进度变化、新作业入列都整份重写一次，
+写入排成一条链（同一个文件并发改名在 Windows 上报过 EPERM）。启动时读回来，上次没跑完的作业标成 `interrupted`，不重跑。
+
+{/* has file="../plugins/mineru/src/index.ts" text="const JOBS_DOC_NAME = 'jobs'" */}
+
+数据插件写在 `static inject` 里，缺了插件不加载；写盘失败时 `submit` 整批拒并撤回刚入列的作业。测试替身把文档放在内存
+Map 里，没有断言写进去的形状。
+
+### ⑤ 终态事件 → 内核
+
+作业到 `done` 或 `failed` 时，作业机经内核的 `emit` 推一条事件给页面：
+`{ source: 'gwb-mineru', type: 'job-settled', jobId, ok, outDir, error? }`。事件在作业账写盘之后才发。
+事件是给看着界面的人的；agent 照样查 `pdf2md.status`。内核用 `requireKernel` 取，不写进 `inject`。
+
+{/* has file="../plugins/mineru/src/index.ts" text="type: 'job-settled'" */}
+
+测试替身内核把事件收进数组，没有断言。
+
+### ⑥ 说明书插件 → `skills/pdf2md`
+
+包里的说明书经说明书插件登记，局部注入：没装说明书插件的 home 里作业机照常加载，只是 agent 读不到这份说明书。
+
+{/* has file="../plugins/mineru/src/index.ts" text="this.providerContext.inject(['gwbSkills']" */}
+
+### ⑦ 全链 → 云端客户端
+
+作业机为每条作业调三次：`requestUpload(token, 'a.pdf')` 拿 `[batchId, uploadUrl]`，`upload(uploadUrl, 'D:/papers/a.pdf')`
+传上去，`poll(token, batchId, 选项)` 一直等到终态回一份 `FileResult`。轮询的节奏（5 秒一问）、停滞上限（10 分钟）、
+总上限（1 小时）都由作业机传进去；云端客户端只负责按这些数判断，结果是「解析失败」「停滞」还是「超时」都写进 `err_msg`，
+不抛错。它不知道作业、作业账与作业号。
+
+{/* has file="../plugins/mineru/src/core/mineru.ts" text="export async function poll(token: string, batchId: string, options: PollOptions): Promise<FileResult>" */}
+
+`tests/job-runner.test.mjs` 换掉全局 `fetch` 模拟云端，第一次轮询就回终态，所以停滞与超时的判断没有单测；它们的证据在
+`probes/2609172224_poll-and-live-run/`。
+
+### ⑧ 全链 → 解包
+
+拿到 `full_zip_url` 后作业机调 `downloadExtract(zipUrl, 'D:/papers/a', { jobId, overwrite? })`；
+`pdf2md.recover` 调 `extractArchive(归档路径, …)`，走同一条解包路径但不碰网络。两者都回 `ExtractResult`
+（markdown 文件名、语言、文件清单、没搬的条目、归档路径、这次是新建还是覆盖）。失败抛 `ArchiveError` 一族，
+归档已经写到磁盘时错误上带着 `archive`，作业机把它记进作业账，`recover` 才有东西可用。
+
+{/* has file="../plugins/mineru/src/core/extract.ts" text="export async function downloadExtract(zipUrl: string, outDir: string, options: ExtractOptions): Promise<ExtractResult>" */}
+
+`tests/extract.test.mjs` 直接调这两个函数，`tests/job-runner.test.mjs` 从作业机那一侧再走一遍。
+
+### ⑨ 云端客户端 → MinerU
+
+三个 HTTP 请求：`POST /file-urls/batch` 申请上传位（请求里钉死 vlm 模型、开公式与表格、语言 `ch`）、`PUT` 预签名地址上传 PDF、
+`GET /extract-results/batch/{batchId}` 轮询。回包里的 `code` 或 `msgCode` 不是 0 就抛 `MineruError`，认得出的错误码
+（token 失效、超 200MB、超 200 页、当天任务数到上限）附一句照着就能做的话。
+
+{/* has file="../plugins/mineru/src/core/mineru.ts" text="const API_BASE = 'https://mineru.net/api/v4'" */}
+
+真云端只在 `probes/` 的实验里跑过，单测全用替身。
+
+### ⑩ 解包 → 结果 zip
+
+`downloadExtract` 用 `GET` 取 `full_zip_url`，600 秒超时；非 2xx 直接抛错，这时还没有归档，作业只能重新提交。
+
+{/* has file="../plugins/mineru/src/core/extract.ts" text="const resp = await fetch(zipUrl, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })" */}
+
+### ⑪ 解包 ⇢ 工作根
+
+每个 outDir 旁边有一个工作根：`D:/papers/a` 的工作根是 `D:/papers/.a.pdf2md/`。里面放原始 zip 的副本
+`archive-<作业号>.zip`（先写 `.part` 再改名，半截文件不会冒充归档）、解包用的 `staged-<作业号>/`、覆盖时挪出来的旧产物
+`backup-<时间>/`，以及覆盖途中崩溃后用来把旧产物搬回去的 `commit-journal.json`。工作根不在 outDir 里，
+这样 outDir 才能整个替换。调用方随时可以删掉工作根，正在跑的作业除外；备份不会自动清。
+
+{/* has file="../plugins/mineru/src/core/extract.ts" text="const WORK_ROOT_SUFFIX = '.pdf2md'" */}
+
+`tests/extract.test.mjs` 断言失败时工作根里只剩归档、没有 staging 残骸；`commit-journal.json` 的回滚没有测试。
+
+### ⑫ 提交点 ⇢ outDir
+
+解包全部在 staging 里做完，最后一步把 staging 整个改名成 `D:/papers/a`。所以 outDir 要么还是上一版（或不存在），
+要么是完整的新版，没有新旧混着的状态。outDir 里已经有东西而这条作业没带 `overwrite`，提交点拒绝、一个字节不动；
+带了 `overwrite`，旧产物先整个挪进工作根的备份。
+
+{/* has file="../plugins/mineru/src/core/extract.ts" text="await renameStagedOrRejectConflict(staged, outDir, archive)" */}
+
+`tests/extract.test.mjs` 覆盖默认拒、显式覆盖、outDir 是文件、两条解包同时抢一个 outDir。
+
+## 三块代码各自对外能做什么
+
+- **[作业机](/docs/job-runner)**：服务 `gwbPdf2md` 与四条命令；作业状态机、作业账、outDir 占用、启动对账与卸载时打断、凭归档恢复
+- **[云端客户端](/docs/mineru-client)**：`requestUpload`、`upload`、`poll` 三个函数，外加错误类型 `MineruError` 与单文件上限 `MAX_FILE_BYTES`
+- **[解包](/docs/extract)**：`downloadExtract`、`extractArchive`、`isChineseDominant`，外加三种错误 `ArchiveError`、`EntryRejectedError`、`CommitRejectedError`
+
+插件之间的注入、peer 写法与缺了会怎样汇总在[插件之间怎么连](/docs/wiring)。
+
+## 刻意不做的事
+
+- 不认识论文库：不做归档副本、不给成品命名、不做翻译与规格化，出了 outDir 都是调用方的事（[根卡](/trajectory/2026-09-08-gwb-mineru)）
+- 不缓存结果、不按内容去重：同一个 PDF 交两次就完整跑两遍，存第二份就长出了「库」（[根卡](/trajectory/2026-09-08-gwb-mineru)）
+- 失败不自动重试、不自动续取：要不要再花一次解析额度由调用方决定；本地凭归档重新解包不算重试（[作业改串行](/trajectory/2026-09-17-serial-jobs)、[续取](/trajectory/2026-09-18-resume-and-batch-shape)）
+- 不把多个文件合进一个云端批：实测合批会连带解析失败（[全并行](/trajectory/2026-09-18-parallel-and-serial-overturned)）
+- 没有并发数设置、优先级与取消排队：作业全部同时跑，连接抖动与并发无关（[全并行](/trajectory/2026-09-18-parallel-and-serial-overturned)）
+- 没有「转换引擎」抽象层：只有 MinerU（[名不对应](/trajectory/2026-09-08-engine-vs-function-naming)）
+- 不推进度事件，云端的细分状态不进作业账：进度只记在作业的 `progress` 上（[看进度判超时](/trajectory/2026-09-17-poll-by-progress)）
+- 不接 MinerU 的 Agent 轻量 API，不接云端回调（[看进度判超时](/trajectory/2026-09-17-poll-by-progress)）
+
+## 按来意读
+
+要调用它读[用法](/docs/usage)；要改作业怎么排、账怎么记读[作业机](/docs/job-runner)；要改跟 MinerU 的对话读
+[云端客户端](/docs/mineru-client)；要改 zip 怎么落到磁盘上读[解包](/docs/extract)；碰到不认识的词查[术语表](/docs/glossary)。
