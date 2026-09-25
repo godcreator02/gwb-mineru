@@ -1,12 +1,3 @@
-/**
- * MinerU 云端 API 客户端（单文件形态）：申请上传位、上传、轮询解析结果。
- *
- * 接口规格对位 mineru.net 精准解析 API v4 的「本地文件批量上传解析」那一组：HTTP 层异常如实抛出，
- * 由作业机收进 job 的 error——不在这吞。
- *
- * 那组接口是「一批多文件」，这个件一作业一文件：数组长度恒为 1，语义不变。
- */
-
 import { readFile } from 'node:fs/promises'
 
 const API_BASE = 'https://mineru.net/api/v4'
@@ -14,19 +5,15 @@ const API_BASE = 'https://mineru.net/api/v4'
 /** 云端单文件上限 200MB（另有 200 页上限——页数要解 PDF 才知道，本地只挡大小） */
 export const MAX_FILE_BYTES = 200 * 1024 * 1024
 
-/** 解析任务的终态，到达任一即不再变化 */
-const TERMINAL_STATES = new Set(['done', 'failed'])
-
-/** 云端正在干活的状态——只有这两态会判停滞；排队（waiting-file / pending）不判 */
-const WORKING_STATES = new Set(['running', 'converting'])
+const TERMINAL_CLOUD_STATES = new Set(['done', 'failed'])
+const STALL_CHECKED_CLOUD_STATES = new Set(['running', 'converting'])
 
 const REQUEST_TIMEOUT_MS = 60 * 1000
 const UPLOAD_TIMEOUT_MS = 600 * 1000
 
 const TOKEN_HINT = 'token 无效或过期：去 mineru.net 的 API 管理页换一个，再 settings.set { section: "mineru", key: "token", value: "…" }'
 
-/** 业务错误码 → 调用方照着就能做的那句话。没列的只报 code 与 msg */
-const HINTS: Readonly<Record<string, string>> = {
+const ACTIONABLE_HINT_BY_ERROR_CODE: Readonly<Record<string, string>> = {
   A0202: TOKEN_HINT,
   A0211: TOKEN_HINT,
   '-60005': '文件超过 200MB，拆小了再提',
@@ -72,20 +59,21 @@ export async function requestUpload(token: string, name: string): Promise<[strin
       enable_table: true,
       // ch 是云端缺省：中英混合
       language: 'ch',
+      // 接口收一批多文件；这里一作业一文件，数组长度恒为 1
       files: [{ name, is_ocr: false }],
     }),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
-  const data = await readData(resp)
+  const data = await readResponseData(resp)
   const batchId = data['batch_id']
-  const urls = data['file_urls']
-  if (typeof batchId !== 'string' || !Array.isArray(urls) || typeof urls[0] !== 'string') {
+  const uploadUrls = data['file_urls']
+  if (typeof batchId !== 'string' || !Array.isArray(uploadUrls) || typeof uploadUrls[0] !== 'string') {
     throw new MineruError('申请上传位的回包形状不对（缺 batch_id 或 file_urls）')
   }
-  return [batchId, urls[0]]
+  return [batchId, uploadUrls[0]]
 }
 
-/** 把 PDF 二进制 PUT 到预签名 URL（不带 Content-Type，见接口规格） */
+/** 把 PDF 二进制 PUT 到预签名 URL（不带 Content-Type，接口规格如此） */
 export async function upload(uploadUrl: string, pdfPath: string): Promise<void> {
   const resp = await fetch(uploadUrl, {
     method: 'PUT',
@@ -104,7 +92,7 @@ export interface PollOptions {
   readonly timeout: number
   /** 每拿到一个非终态回包调一次——作业机拿它记进度 */
   readonly onProgress: (result: FileResult) => void
-  /** 作业被收走（件卸载）时先让它醒，别等满一轮间隔 */
+  /** 作业被收走（插件卸载）时先让它醒，别等满一轮间隔 */
   readonly signal: AbortSignal
 }
 
@@ -113,39 +101,39 @@ export async function poll(token: string, batchId: string, options: PollOptions)
   const headers = { Authorization: `Bearer ${token}` }
   const url = `${API_BASE}/extract-results/batch/${batchId}`
   const startedAt = Date.now()
-  let mark = ''
-  let markedAt = startedAt
+  let lastProgressMark = ''
+  let lastProgressChangedAt = startedAt
   for (;;) {
     const resp = await fetch(url, { headers, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
-    const data = await readData(resp)
+    const data = await readResponseData(resp)
     const rawResults = data['extract_result']
     if (!Array.isArray(rawResults) || rawResults.length === 0) {
       throw new MineruError('轮询回包里没有 extract_result')
     }
-    const result = toResult(rawResults[0])
-    if (TERMINAL_STATES.has(result.state)) return result
+    const result = toFileResult(rawResults[0])
+    if (TERMINAL_CLOUD_STATES.has(result.state)) return result
     options.onProgress(result)
 
     const now = Date.now()
-    const nextMark = `${result.state}:${String(result.extract_progress?.extracted_pages ?? '')}`
-    if (nextMark !== mark) {
-      mark = nextMark
-      markedAt = now
-    } else if (WORKING_STATES.has(result.state) && now - markedAt >= options.stallTimeout * 1000) {
-      return giveUp(result, `云端解析停滞：${String(options.stallTimeout)}s 内状态与已解析页数都没动`)
+    const progressMark = `${result.state}:${String(result.extract_progress?.extracted_pages ?? '')}`
+    if (progressMark !== lastProgressMark) {
+      lastProgressMark = progressMark
+      lastProgressChangedAt = now
+    } else if (STALL_CHECKED_CLOUD_STATES.has(result.state) && now - lastProgressChangedAt >= options.stallTimeout * 1000) {
+      return settleAsFailed(result, `云端解析停滞：${String(options.stallTimeout)}s 内状态与已解析页数都没动`)
     }
     if (now - startedAt >= options.timeout * 1000) {
-      return giveUp(result, `轮询超时：${String(options.timeout)}s 内没解析完`)
+      return settleAsFailed(result, `轮询超时：${String(options.timeout)}s 内没解析完`)
     }
-    await sleep(options.interval * 1000, options.signal)
+    await sleepUnlessAborted(options.interval * 1000, options.signal)
   }
 }
 
-function giveUp(result: FileResult, reason: string): FileResult {
+function settleAsFailed(result: FileResult, reason: string): FileResult {
   return { ...result, state: 'failed', full_zip_url: null, err_msg: `${reason}（云端可能还在跑，只是没人再取结果）` }
 }
 
-function sleep(ms: number, signal: AbortSignal): Promise<void> {
+function sleepUnlessAborted(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => resolve(), ms)
     signal.addEventListener(
@@ -159,24 +147,21 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   })
 }
 
-/**
- * 读 JSON 回包取 data。业务错抛 MineruError——token 错走 HTTP 401、键叫 msgCode 不叫 code，
- * 所以先认回包再认状态码；认不出回包的非 2xx 抛 HTTP 错
- */
-async function readData(resp: Response): Promise<Record<string, unknown>> {
+/** token 错走 HTTP 401、错误码的键叫 msgCode 不叫 code，所以先认回包再认状态码；认不出回包的非 2xx 抛 HTTP 错 */
+async function readResponseData(resp: Response): Promise<Record<string, unknown>> {
   const text = await resp.text()
-  const body = parseRecord(text)
+  const body = parseJsonRecord(text)
   const code = body?.['code'] ?? body?.['msgCode']
   if (resp.ok && code === 0) return asRecord(body?.['data']) ?? {}
   if (code !== undefined && code !== 0) {
-    const hint = HINTS[String(code)]
+    const hint = ACTIONABLE_HINT_BY_ERROR_CODE[String(code)]
     const msg = typeof body?.['msg'] === 'string' ? body['msg'] : ''
     throw new MineruError(`MinerU 返回错误：code=${String(code)} msg=${msg}${hint === undefined ? '' : `。${hint}`}`)
   }
   throw new Error(`HTTP ${String(resp.status)} ${resp.statusText}：${text.slice(0, 200)}`)
 }
 
-function parseRecord(text: string): Record<string, unknown> | undefined {
+function parseJsonRecord(text: string): Record<string, unknown> | undefined {
   try {
     return asRecord(JSON.parse(text))
   } catch {
@@ -188,7 +173,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined
 }
 
-function toResult(raw: unknown): FileResult {
+function toFileResult(raw: unknown): FileResult {
   const parsed = raw as {
     file_name: string
     state: string
