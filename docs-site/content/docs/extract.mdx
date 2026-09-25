@@ -13,7 +13,7 @@ description: src/core/extract.ts——下载 zip、围栏校验全部 entry、�
 一条链：**下载 zip → 先在 outDir 同级的工作根留一份归档 → 挑出 markdown → 围栏全量校验每一条 entry
 → 解进工作根里的 staging → 原子提交进 outDir → 按 CJK 占比判语言**。
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="94-122" hash="8ab550d3a172" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="117-151" hash="567760f050ad" blob="1ec2fd1acdda" */}
 
 两个入口：`downloadExtract(zipUrl, outDir, options)` 走云端那条路（下载后先落盘再解包，云端只管给
 zip）；`extractArchive(archive, outDir, options)` 从盘上那份归档解——零网络，作业机的
@@ -28,7 +28,7 @@ zip）；`extractArchive(archive, outDir, options)` 从盘上那份归档解—�
 
 ## 数据结构
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="48-70" hash="24017cec123e" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="71-93" hash="314fb2467416" blob="1ec2fd1acdda" */}
 
 `markdown` 是 outDir 里那份完整 markdown 的**文件名**（如 `full.md`）；`files` 是相对 outDir 的
 POSIX 路径清单；`skipped` 是白名单外、没搬的条目（zip 根上的 `layout.json` 之类，列出来不静默丢）；
@@ -77,25 +77,25 @@ zip 是测试里用 adm-zip 现场生成的（`tests/helpers.mjs`）——`addFi
 分隔符，落点说不清）、冒号（盘符或 NTFS 备用数据流）、绝对路径、`..` 段；归一后两条 entry 撞同一个
 落点、或一条既是文件又是另一条的父目录，同样拒。**一条不合格整包不落盘**，报出是哪条、违反的哪条：
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="238-251" hash="e622d1d3cd80" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="246-260" hash="c7a3e9038cff" blob="1ec2fd1acdda" */}
 
 **白名单只有两样**：根下那份 markdown 本体，与严格 `images/` 子树里的东西。zip 根上的杂项
 （`layout.json` 之类）**不搬但不拒**——它们是云端正常会带的，只是不落盘；不搬的逐条列进 `skipped`，
 让人看得见丢的是什么：
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="199-231" hash="f9aacff7911b" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="210-244" hash="58e524324763" blob="1ec2fd1acdda" */}
 
 **落点还要过一次真实路径**：词法上没毛病不等于真落在里面——软链接 / 目录联接能把落点绕出去。
 父目录还不存在时，realpath 它**最近的已存在祖先**、再把剩下的段拼回来，比对是否跑出落点根：
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="253-271" hash="d63b8a13b60f" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="262-283" hash="2316d5896ce6" blob="1ec2fd1acdda" */}
 
 **提交点是 rename，产物整份出现**。解包全在 outDir 同级工作根的 `staged-<作业号>` 里做完，提交时
 整体 rename 进 outDir——outDir 要么还是上一版、要么就是完整的新版，**没有半个产出**这种中间态
 （老形状是逐文件原地覆盖，写一半挂掉就新旧混着）。提交点同时是并发的那道检查：outDir 在查过之后、
 rename 之前被别人占了，Windows 给 EPERM/EEXIST，翻成结构化拒，说清 outDir 没动：
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="272-331" hash="a158ec2e0ed9" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="285-344" hash="c8ac7bdf8510" blob="1ec2fd1acdda" */}
 
 **已有产物默认拒，要覆盖得显式**。outDir 是空的（或不存在）→ 直接提交；里面有东西而这次没带
 `overwrite` → 拒，一个字节不动；带了 `overwrite` → 旧产物**整份**先 rename 进工作根的
@@ -105,26 +105,26 @@ rename 之前被别人占了，Windows 给 EPERM/EEXIST，翻成结构化拒，�
 「outDir 不在、旧产物在备份里」。提交前先写一份 journal，下一次对同一个 outDir 开工时凭它把旧产物
 搬回去——宁可退回上一版，也不给调用方一个产物不见了的目录：
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="333-342" hash="0c9633e5b9e6" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="346-356" hash="7533c02b8e9d" blob="1ec2fd1acdda" */}
 
 **归档先落盘，再解包**。原始 zip 写进工作根（先写 `.part` 再 rename，半截 zip 不冒充归档），
 文件名带作业号。解包失败/中断时它就是「不用再花一次云端额度」的凭据——`pdf2md.recover` 拿它重走
 一遍同一条链（同一套围栏、同一个提交点）：
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="84-92" hash="b4f7c3615bb5" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="107-115" hash="54179b924fce" blob="1ec2fd1acdda" */}
 
 {/* ref file="../plugins/mineru/src/core/extract.ts" lines="153-161" hash="43b4366d4a9c" blob="1ec2fd1acdda" */}
 
 工作根是 outDir 同级的 `.<outDir 名>.pdf2md`：staging、归档、备份都住里面，**不在 outDir 里**
 （产出的目录要干净，整份 rename 也才成立）。调用方随时可以把它整个删掉——除了正在跑的那条作业：
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="144-152" hash="a0154a3c056e" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="190-199" hash="25daa1479ee4" blob="1ec2fd1acdda" */}
 
 **认 markdown：full.md 优先，否则要求唯一，且必须在根下**：优先认 `full.md`；没有它就得只有一份
 `.md`，两份以上歧义即抛（猜一个，比报错贵）；认出来的那份不在 zip 根下同样抛——这个插件的契约只认
 根下那份：
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="371-384" hash="e615632038b1" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="390-403" hash="272e5d59e7b3" blob="1ec2fd1acdda" */}
 
 **解包完自检一次**：markdown 不在 staging 里说明这趟解包不可信，当场抛、让作业进 failed——
 不带着问题提交。
@@ -132,4 +132,4 @@ rename 之前被别人占了，Windows 给 EPERM/EEXIST，翻成结构化拒，�
 **语言判定放在这个插件里**：CJK 占比是通用文本分析，跟论文库没有关系；调用方拿 `lang` 去定
 自己的成品命名。口径是老仓原样：CJK 字数 × 3 ≥ ASCII 字母数判 zh。
 
-{/* ref file="../plugins/mineru/src/core/extract.ts" lines="72-82" hash="b90026049c1d" blob="1ec2fd1acdda" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="95-105" hash="56196b53c22e" blob="1ec2fd1acdda" */}
