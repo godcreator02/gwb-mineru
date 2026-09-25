@@ -1,23 +1,23 @@
 ---
 title: 术语表
-description: 这个件造的词、gwb 线的词在这儿有特定含义的——每个词一句定义，指到详解页
+description: 这个插件造的词、gwb 工作台的词在这儿有特定含义的——每个词一句定义，指到详解页
 ---
 
 # 术语表
 
-**本页回答**：文档里那个词到底指什么。收这个件自己造的、与通用词在这里有特定含义的词；
+**本页回答**：文档里那个词到底指什么。收这个插件自己造的、与通用词在这里有特定含义的词；
 通用编程词不收。
 
-## 这个件
+## 这个插件
 
 | 词 | 是什么 |
 | --- | --- |
-| **作业机** | 这个件的形态：`submit` 秒回作业号、后台跑全链、终态事件。对应 `src/index.ts` 的服务，见[作业机](/docs/job-runner) |
+| **作业机** | 这个插件的形态：`submit` 秒回作业号、后台跑全链、终态事件。对应 `src/index.ts` 的服务，见[作业机](/docs/job-runner) |
 | **作业** | 一次 PDF → markdown 转换的账（`Pdf2mdJob`）：输入、输出目录、状态、成败原因、产出三样。落盘就是它 |
 | **状态机六态** | `queued → uploading → running → done \| failed \| interrupted`；后三个是终态，到任一不再变化 |
 | **并行** | 作业各自独立、同时开跑：一次交 N 篇就是 N 个独立的单文件任务，云端各转各的，互不排队。判据见[作业机](/docs/job-runner) |
 | **作业账** | 作业记录的落盘副本，经 gwbData 存进文档 `jobs`。重启后靠它对账 |
-| **工作根** | outDir 同级的 `.<outDir 名>.pdf2md/`：归档、staging、备份都住这儿。**不在 outDir 里**——产出目录要干净，整份提交也才成立。调用方随时可整个删（在跑的作业除外）。见[解包与语言](/docs/extract) |
+| **工作根** | outDir 同级的 `.<outDir 名>.pdf2md/`：归档、staging、备份都放在这儿。**不在 outDir 里**——产出目录要干净，整份提交也才成立。调用方随时可整个删（在跑的作业除外）。见[解包与语言](/docs/extract) |
 | **归档** | 结果 zip 的落盘副本（工作根里 `archive-<作业号>.zip`）。解包失败/中断后凭它重新解包，不必再花一次云端额度；作业账的 `archive` 记着路径 |
 | **围栏** | 解包前对全部 entry 的统一校验：白名单只有根下 markdown 与严格 `images/` 子树，盘符/冒号、绝对路径、`..` 段、反斜杠、控制字符与真实路径逃逸一律拒。一条不合格整包不落盘。见[解包与语言](/docs/extract) |
 | **提交点** | staging 整体 rename 进 outDir 的那一步：产物要么上一版、要么完整新版。outDir 已有产物默认拒，显式 `overwrite` 才把旧的挪进备份再上新的 |
@@ -25,30 +25,21 @@ description: 这个件造的词、gwb 线的词在这儿有特定含义的——
 | **`pdf2md.recover`** | 凭作业盘上那份归档重新解包进它的 outDir：零云端、零额度。只对 failed / interrupted 且账上有归档的作业有效。见[用法](/docs/usage) |
 | **进度**（`progress`） | 云端解析中报来的已解析页 / 总页，记在作业上；排队时没有，done 时补满。只记账，不推事件 |
 | **停滞** | 云端在解析（running / converting）而状态与已解析页数一段时间都不动——作业按 failed 结算。排队不算停滞，只受总上限管。见[云端客户端](/docs/mineru-client) |
-| **interrupted** | 宿主重启或件卸载打断的作业——账如实标注，不自动重跑；处置是重提一次。见[用法](/docs/usage)坑三条 |
-| **零库概念** | 输入一个 PDF 绝对路径、一个输出目录，产出 markdown + images/。不知道 papers 存在，不做归档、不做成品命名 |
+| **interrupted** | 宿主重启或插件卸载打断的作业——账如实标注，不自动重跑；处置是重提一次。见[用法](/docs/usage)坑四条 |
+| **零库概念** | 输入一个 PDF 绝对路径、一个输出目录，产出 markdown + images/。不知道论文库存在，不做归档、不做成品命名 |
 | **语言判定** | 正文 zh/en 的判定：CJK 字数 × 3 ≥ ASCII 字母数判 zh。老仓口径原样，见[解包与语言](/docs/extract) |
 | **`job-settled`** | 作业到终态时经内核 emit 通道推的界面事件。给看着界面的人，不是给 agent 的回执 |
-| **名不对应** | 件叫 `gwb-mineru`（说谁在干活：MinerU 引擎），服务与命令叫 `pdf2md.*`（说干什么：转换）。有意例外，见[那张卡](/trajectory/2026-09-08-engine-vs-function-naming) |
+| **名不对应** | 插件叫 `gwb-mineru`（说谁在干活：MinerU 引擎），服务与命令叫 `pdf2md.*`（说干什么：转换）。有意例外，见[那张卡](/trajectory/2026-09-08-engine-vs-function-naming) |
 
-## gwb 线的词（在这里的含义）
+## gwb 工作台的词（在这里的含义）
 
 | 词 | 是什么 |
 | --- | --- |
-| **件** | gwb 线的插件：一个 npm 包，装进 home、经 cordis 挂载，一仓一包一件。内核线的正本见 gwb-kernel 的文档站 |
-| **home** | 件住的地方，一个普通的 npm 项目根；本件的凭据节 `mineru` 也住那边的 settings |
-| **static inject** | cordis 的硬依赖声明：`static inject = ['gwbCommands', …]`——缺谁这个件不挂。本件对 settings / data / commands 用它 |
-| **局部注入** | `ctx.inject(['gwbSkills'], …)` 那种可选依赖：没装 skills 件的 home 里作业机照常挂 |
-| **gwbData** | gwb-data 件提供的小型落盘服务（`readDoc` / `writeDoc`）。作业账的存放处 |
-| **设置节** | settings 里按件分的节。本件的节名 `mineru`（跟 cordis.yml 条目 id 走），键 `token`，类型 secret |
+| **插件** | gwb 工作台的功能单位：一个 npm 包，装进 home、经 cordis 加载。内核的正本见 gwb-kernel 的文档站 |
+| **home** | 插件装在的地方，一个普通的 npm 项目根；本插件的凭据节 `mineru` 也存在那边的 settings |
+| **static inject** | cordis 的硬依赖声明：`static inject = ['gwbCommands', …]`——缺哪个本插件就不加载。本插件对 settings / data / commands 用它 |
+| **局部注入** | `ctx.inject(['gwbSkills'], …)` 那种可选依赖：没装 skills 插件的 home 里作业机照常加载 |
+| **gwbData** | gwb-data 插件提供的小型落盘服务（`readDoc` / `writeDoc`）。作业账的存放处 |
+| **设置节** | settings 里按插件分的节。本插件的节名 `mineru`（跟 cordis.yml 条目 id 走），键 `token`，类型 secret |
 | **MinerU** | 云端 PDF 解析服务（mineru.net 精准解析 API v4），vlm 模型，公式表格都开，语言 ch（中英混合）。解析是分钟级的——作业形态的全部理由 |
 | **`full.md`** | MinerU 结果 zip 里完整 markdown 的标准名。解包时优先认它，没有则要求 `.md` 唯一 |
-
-## 文档与账本
-
-| 词 | 是什么 |
-| --- | --- |
-| **docfirst** | 文档论断钉在真源码上的机制：引用记号 + git 记忆 + 账本。正本见 docfirst 站 |
-| **钉码** | 页里指向某段代码的正式引用（`{/* ref … */}`）。代码一改就报黄，得人复核。只出现在现状区 |
-| **六区** | docs / trajectory / spec / future / outputs / feedback——目录即状态，六种生命周期 |
-| **轨迹卡** | `content/trajectory/` 一卡一文件，记方向了断，只增不改、不钉码 |

@@ -8,17 +8,16 @@ description: 消费方 inject gwbPdf2md，agent 走 pdf2md.* 四条命令；toke
 **本页回答**：现在的代码怎么用——消费方代码怎么 inject、agent 走哪四条命令、token 配在哪、
 产出长什么样、outDir 已有东西时怎么办、失败了怎么处置。
 
-## 两条门，一张脸
+## 两种调用方式，同一套作业
 
 - **消费方（代码）**：`inject: ['gwbPdf2md']`，拿 `ctx.gwbPdf2md` 四方法——`submit(files)`
-  （一作业一文件的数组）/ `recover(id)` / `get(id)` / `list()`。gwb-paper-fetch（单元
-  `26090814ifd`）就是这么在代码里注入做论文转换的，agent 面上走它的 `paper-fetch.convert`，
-  不直接碰这个件
+  （一作业一文件的数组）/ `recover(id)` / `get(id)` / `list()`
 
 {/* ref file="../src/index.ts" lines="89-107" */}
 
 - **agent（命令）**：`pdf2md.submit` / `pdf2md.status` / `pdf2md.jobs` / `pdf2md.recover` 四条，
-  「一个孤立 PDF 想要 markdown」走这边
+  「一个孤立 PDF 想要 markdown」走这边；gwb-paper-fetch 的说明书也让 agent 直接调 `pdf2md.submit`
+  转论文
 
 {/* ref file="../src/index.ts" lines="195-210" */}
 
@@ -37,13 +36,13 @@ description: 消费方 inject gwbPdf2md，agent 走 pdf2md.* 四条命令；toke
 
 done 的作业带三样产出：`markdown`（outDir 里那份完整 markdown 的文件名，通常是 `full.md`）、
 `lang`（zh/en，按 CJK 占比判）、`files`（落盘清单）。正文里的图是 `images/xxx` 相对链接，
-跟 md 同层，不用改。账上另有三格交代「怎么落的」：`commit`（`created` 新建 / `replaced` 覆盖）、
+跟 md 同层，不用改。账上另有三个字段交代「怎么落盘的」：`commit`（`created` 新建 / `replaced` 覆盖）、
 `backup`（覆盖时旧产物挪去的备份目录）、`skipped`（zip 里没搬的那些杂项，如 `layout.json`）。
 
 ## 一个 outDir 一次只落一个作业；已有产物要显式覆盖
 
-**outDir 是产物那一格的钥匙，一条作业一把**。同一批里两条瞄着同一个 outDir、或撞上一条还在跑的
-作业，整批当场拒（话里点名是谁占着），云端一次都不问——两条作业并排往同一个目录里解，先落定的
+**一个 outDir 同一时间只归一条作业**。同一批里两条瞄着同一个 outDir、或撞上一条还在跑的
+作业，整批当场拒（报错里点名是谁占着），云端一次都不问——两条作业并排往同一个目录里解，先落定的
 那条账立刻就不准了。
 
 **outDir 里已经有东西时默认拒**（提交阶段就拒，不排一条注定在提交点失败的作业）。要覆盖就在这一项
@@ -60,12 +59,12 @@ rename 进 outDir，中途失败时 outDir 还是上一版（或还没出现）�
 ## 归档与 recover：解包失败不必重花额度
 
 结果 zip 一抓下来就先在工作根（outDir 同级的 `.<outDir 名>.pdf2md/`，文件名 `archive-<作业号>.zip`）
-留一份，再解包。所以解包那一段失败时（围栏拒掉可疑条目、提交点撞上别人刚占位、盘上 I/O 掉链子），
+留一份，再解包。所以解包那一段失败时（围栏拒掉可疑条目、提交点撞上别人刚占位、盘上 I/O 出错），
 作业落 `failed` 但**账上记着归档路径**——`pdf2md.recover { "id": "<作业号>" }` 凭它把解包链重走一遍：
 零云端、零额度，不重新报名、不上传、不轮询。归档一直留着，直到调用方自己把工作根删掉。
 
 recover 只对 `failed` / `interrupted` 的作业有效；`done` 的（产物已经在 outDir 里）与还在跑的会被
-挡回来。账上没有 `archive` 的（上传或轮询阶段就挂了的）也会直说无路可走——那种要结果只能重新
+挡回来。账上没有 `archive` 的（上传或轮询阶段就失败的）也会直说无路可走——那种要结果只能重新
 submit，会再花一次额度。
 
 ## token 缺席当场挡，token 失效写进 error
@@ -76,7 +75,7 @@ submit，会再花一次额度。
 {/* ref file="../src/index.ts" lines="109-119" */}
 
 配置命令：`settings.set { "section": "mineru", "key": "token", "value": "…" }`。值是 secret，
-status 与日志里永远看不到它。token 是**现取现读**的——settings 改值不用重挂件。
+status 与日志里永远看不到它。token 是**现取现读**的——settings 改值不用重新加载插件。
 
 配了但无效或过期的 token submit 挡不住（要问云端才知道），作业会在几秒内 `failed`，error 里带
 `code=A0211` 与换 token 的那句话；换完重提即可。
@@ -89,9 +88,9 @@ jobId / ok / outDir / error）。**事件是给看着界面的人的，不是给
 
 ## 坑四条
 
-- **`interrupted`**：宿主重启或件卸载把作业打断了，账上如实标注。MinerU 侧可能其实做完了，但
+- **`interrupted`**：宿主重启或插件卸载把作业打断了，账上如实标注。MinerU 侧可能其实做完了，但
   结果没人取——重提一次作业就是了（同一个 PDF 再 submit 一遍），没有恢复续跑
-- **失败原因看 `error`**：上传失败、解析失败、停滞或超时、zip 结构不对、云端业务错，都在那一格，
+- **失败原因看 `error`**：上传失败、解析失败、停滞或超时、zip 结构不对、云端业务错，都在那个字段里，
   日志里也有同一句。认得出的云端错误码（token 失效、超 200MB、超 200 页、当天任务数到顶）附一句
   照着就能做的话；网络层失败（`fetch failed`）括号里带真原因（`ECONNRESET` 之类）——mineru.net
   的连接偶发抖动与并发无关（单发也撞、重试即过），看到它重提就好
@@ -100,5 +99,5 @@ jobId / ok / outDir / error）。**事件是给看着界面的人的，不是给
 - **files 里每一项都得是两个绝对路径**：`input` 得是存在的文件、不超过 200MB；`outDir` 不必预先建，
   第一份产物落位那一刻它才整份出现。submit 当场验，验不过整批抛错不落账
 
-说明书（给 agent 的那份）住包内 `skills/pdf2md/SKILL.md`，经 gwb-skills 件开出；没装 skills 件
-的 home 里作业机照常挂——skills 是局部可选注入。
+说明书（给 agent 的那份）在包内 `skills/pdf2md/SKILL.md`，经 gwb-skills 插件登记；没装 gwb-skills
+的 home 里作业机照常加载——skills 是局部可选注入。

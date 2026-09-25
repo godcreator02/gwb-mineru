@@ -1,27 +1,28 @@
 # gwb-mineru
 
-gwb 内核线（单元 `26090705ymz`）的 MinerU 转换插件：`pdf2md` 服务（`ctx.gwbPdf2md`），
+gwb 工作台的 MinerU 转换插件：`pdf2md` 服务（`ctx.gwbPdf2md`），
 PDF 经 MinerU 云端转 markdown。**插件名是引擎（gwb-mineru）、服务与命令是功能（pdf2md.\*），
 名不对应是有意例外**——消费方 inject 的永远是 `gwbPdf2md`。零库概念：输入 PDF 绝对路径
-与输出目录，产出 markdown + `images/`；不认识 papers（它在代码里局部注入本插件）。
+与输出目录，产出 markdown + `images/`；不认识论文库（gwb-paper-fetch 的说明书让 agent 直接调 `pdf2md.submit`）。
+
+写插件、在隔离 home 里验证读 skill「gwb-devkit」，升版本号、发版读 skill「gwb-release」，
+写或改文档站读 skill「docfirst-docs」。
 
 ## 怎么跑
 
 ```powershell
-pnpm install && pnpm check                     # 门禁：typecheck + build + 单测，绿了才提交
+pnpm install && pnpm check                     # typecheck，再构建并跑单测
 pnpm build                                     # tsc 只出类型声明，esbuild（build.ts）出 js 并打包 adm-zip
 cd docs-site; pnpm dev                         # 文档站，http://localhost:4317
-pnpm exec docfirst check                       # 钉码门禁，单独跑，红了提交不许推
 ```
 
 进 home：`plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`。凭据：settings 节 `mineru`、
-键 `token`（secret，mineru.net 的 API 管理页创建）。包发 gitea 个人源，scope 路由住用户级
-`~/.npmrc`，仓里不配。改一版看一版走 `devkit.dev` 进隔离 home，真链路要真 token。
+键 `token`（secret，mineru.net 的 API 管理页创建）。在隔离 home 里走真链路要配真 token。
 
 ## 硬约束
 
-* **零库概念不许破**：不认识 papers、不做归档与成品命名、不做结果缓存——产出原样落
-  调用方给的 outDir，交出去的就是原料：markdown 文件名、lang、文件清单，外加这次怎么落的
+* **零库概念不许破**：不认识论文库、不做归档与成品命名、不做结果缓存——产出原样放进
+  调用方给的 outDir，交出去的就是原料：markdown 文件名、lang、文件清单，外加这次怎么落盘的
   （`commit` / `backup`）与没搬的清单（`skipped`）
 * **submit 必须秒回**：作业号数组先回、后台各跑各的，绝不把分钟级云端解析放进一次同步调用
 * **一个 outDir 一次只落一个作业**：提交时同步占位，同批两条冲突或与在跑的作业冲突，整批当场拒——
@@ -33,30 +34,24 @@ pnpm exec docfirst check                       # 钉码门禁，单独跑，红�
 * **失败不自动重试**：失败原因如实进作业的 `error`；处置（重提）归调用方
 * **作业全并行、不聚合**：一次交 N 篇就是 N 个独立单文件任务，各自全链跑——聚合进一个
   云端 batch\_id 是实测否掉的形状（解析连带失败）；网络抖动与并发无关（单发也撞、重试即过），
-  防护靠 error 带 cause，不靠限流（见文档站轨迹区 parallel-and-serial-overturned 那张卡）
+  防护靠 error 带 cause，不靠限流（见轨迹卡 parallel-and-serial-overturned）
 * **写盘排队不许拆**：多作业并行推进时作业账写盘排一条链——并发 rename 同一个 jobs.json
   遇到过 EPERM
-* **设置项必须在 init 里 `define`**：不声明 get 永远 undefined、不报错（遇到过，见文档站
-  轨迹区那面墙）
+* **设置项必须在 init 里 `define`**：不声明 get 永远 undefined、不报错（见轨迹卡 wall-rewrite-drops）
 * **轮询不许退回短墙钟**：失败只看云端进度停滞与总上限——墙钟会把长文档误判为失败，调用方重提就重复
-  扣额度（见文档站轨迹区 0.2.0 那张卡）
+  扣额度（见轨迹卡 poll-by-progress）
 
 ## 代码地图
 
 `src/index.ts`（作业机：状态机、账、命令、事件、outDir 占用与覆盖策略）→ `src/core/mineru.ts`
 （云端三动作）→ `src/core/extract.ts`（zip 围栏 + staging 原子提交 + 归档 + CJK 语言判定）。
 后两块是纯函数模块、互不认识；`src/vocab.ts` 是插件自带的 `isRecord` / `requireKernel`
-（词汇表包只有类型）。单测在 `tests/`，细节读文档站现状区三页。依赖写法：peer 只有 `cordis`
-与内核包，其余全在 dev，adm-zip 打包进产物——别把它挪回 `dependencies`。
+（词汇表包只有类型）。单测在 `tests/`，细节读文档站现状区三页。adm-zip 在 dev、由 esbuild
+打包进产物——别把它挪回 `dependencies`。
 
 ## 生成物与实验材料
 
-* 仓根 `README.md` 与这份 `AGENTS.md` 都是**生成物**，正本在 `docs-site/content/outputs/`，
-  改正本后在 `docs-site` 跑 `pnpm exec docfirst render` 重摆，同提交
-* 实验与测量的材料落仓根 `probes/<时间戳>_<目的>/`：一次实验一个目录、自包含（自带依赖，
+* 仓根 `README.md`、`AGENTS.md`、`CLAUDE.md` 都是**生成物**，正本在 `docs-site/content/outputs/`，改那边
+* 实验与测量的材料放在仓根 `probes/<时间戳>_<目的>/`：一次实验一个目录、自包含（自带依赖，
   不进 pnpm workspace）、进 git、不进 docfirst check；evidence 卡在依据段用相对仓根的
   路径指过去，判据见 trajectory skill
-* 轨迹卡（`docs-site/content/trajectory/`）只增不改、正文不许钉码
-
-写或改文档站之前读 docfirst-docs 说明书（由 gwb-docfirst-workflow 插件提供，正本在
-`D:\unitfolders\s28bv-gwbbase\god-live-doc\packages\gwb-docfirst-workflow\skills\docfirst-docs\SKILL.md`）。

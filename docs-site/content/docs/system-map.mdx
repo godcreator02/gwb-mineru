@@ -1,6 +1,6 @@
 ---
 title: 系统地图
-description: 三块代码、一条作业的一生、盘上落了什么——一页看全，细节指到各页
+description: 三块代码、一条作业从提交到终态、盘上落了什么——一页看全，细节指到各页
 ---
 
 # 系统地图
@@ -20,7 +20,7 @@ description: 三块代码、一条作业的一生、盘上落了什么——一�
 依赖方向单向：作业机 → 云端客户端 → （网络）；作业机 → 解包。后两块互相不认识，都是作业机手里的工具。
 `src/vocab.ts` 只有 `isRecord` 与 `requireKernel` 两个无状态小函数：词汇表包 `@godcreator/gwb-plugin-api` 只有类型，这两个函数由插件自带一份。
 
-## 一条作业的一生
+## 一条作业从提交到终态
 
 状态机六态，`done` / `failed` / `interrupted` 是终态：
 
@@ -51,17 +51,16 @@ queued → uploading → running → done | failed
 | `<outDir>` 同级的 `.<outDir 名>.pdf2md/` | **工作根**：`archive-<作业号>.zip`（原始 zip 的落盘副本，recover 凭它）、`backup-<时间戳>/`（覆盖时挪出来的上一版）、staging 与提交 journal（都是过路的）。调用方随时可以整个删掉——正在跑的那条作业除外 |
 | `<home>/node_modules/@godcreator/gwb-mineru` | 插件本体；进 home 走 `plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`（条目 id `mineru`，设置节随它） |
 
-作业账经 gwbData 落在 home 的数据区（文档名 `jobs`），不是文件树的公开面。
+作业账经 gwbData 存在 home 的数据区（文档名 `jobs`），不在上面这些目录里。
 
 ## 速查
 
 | 什么 | 值 |
 | --- | --- |
-| 门禁 | `pnpm check`（仓根：typecheck，再构建并跑单测）；`pnpm exec docfirst check`（docs-site，单独跑） |
+| 检查 | 仓根 `pnpm check`：typecheck，再构建并跑单测 |
 | 构建 | `pnpm build`：tsc 按 `tsconfig.build.json` 只输出类型声明，`build.ts` 用 esbuild 输出 js，把 adm-zip 打包进产物（产物里的包名 import 只剩 node 内置模块与 `cordis`） |
-| 依赖写法 | peer 只有 `cordis`（服务类继承 cordis 的 `Service`，按值 import）与内核包 `@godcreator/gwb-kernel-desktop`；四个邻居插件、词汇表包、adm-zip 都在 dev。规矩的正本在 devkit 文档站「依赖怎么写」 |
+| 依赖 | peer 是 `cordis`（服务类按值继承它的 `Service`）与内核包；adm-zip 在 dev，打包进产物 |
 | 文档站 dev | `pnpm dev`（docs-site 下），端口 4317 |
-| 包源 | gitea 个人源 `https://git.tianshen02.online:28377/api/packages/godcreator/npm/`，`@godcreator` scope 路由住用户级 `~/.npmrc`，仓里不配 |
 | 凭据 | settings 节 `mineru`，键 `token`（secret），mineru.net 的 API 管理页创建 |
 | 实验材料 | 仓根 `probes/<时间戳>_<目的>/`，一次实验一个目录 |
 | 事件 | `source: "gwb-mineru"`、`type: "job-settled"`，载荷带 jobId / ok / outDir / error |
