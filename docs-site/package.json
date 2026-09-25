@@ -3,12 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "gwb-mineru 的文档站：docfirst 钉码 + 六区，README 与 AGENTS 由 render 摆到仓根",
+  "description": "gwb-mineru 的文档站：现状页的说法钉住仓里的源码，README、AGENTS 与 CLAUDE 由 render 生成到仓根",
   "scripts": {
     "dev": "next dev -p 4317",
     "build": "next build",
     "start": "next start -p 4317",
-    "docfirst": "docfirst"
+    "docfirst": "docfirst",
+    "doc": "docfirst check",
+    "doc:confirm": "docfirst confirm",
+    "doc:render": "docfirst render"
   },
   "dependencies": {
     "fumadocs-core": "16.15.1",
@@ -20,7 +23,7 @@
   },
   "devDependencies": {
     "@godcreator/docfirst-trajectory": "0.1.1",
-    "@godcreator/docfirst-workflow": "0.2.4",
+    "@godcreator/docfirst-workflow": "0.3.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/mdx": "^2.0.14",
     "@types/node": "^26.2.0",

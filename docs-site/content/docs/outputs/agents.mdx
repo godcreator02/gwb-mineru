@@ -19,6 +19,7 @@ PDF 经 MinerU 云端转 markdown。**插件名是引擎（gwb-mineru）、服�
 pnpm install && pnpm check                     # typecheck，再构建并跑单测
 pnpm build                                     # tsc 只出类型声明，esbuild（build.ts）出 js 并打包 adm-zip
 cd docs-site; pnpm dev                         # 文档站，http://localhost:4317
+cd docs-site; pnpm doc                         # 钉码检查；doc:confirm 写回挪了位置的钉码，doc:render 重新生成生成物
 ```
 
 进 home：`plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`。凭据：settings 节 `mineru`、
@@ -58,7 +59,7 @@ cd docs-site; pnpm dev                         # 文档站，http://localhost:43
 
 ## 生成物与实验材料
 
-- 仓根 `README.md`、`AGENTS.md`、`CLAUDE.md` 都是**生成物**，正本在 `docs-site/content/outputs/`，改那边
+- 仓根 `README.md`、`AGENTS.md`、`CLAUDE.md` 都是**生成物**，正本在 `docs-site/content/docs/outputs/`，改那边
 - 实验与测量的材料放在仓根 `probes/<时间戳>_<目的>/`：一次实验一个目录、自包含（自带依赖，
   不进 pnpm workspace）、进 git、不进 docfirst check；evidence 卡在依据段用相对仓根的
   路径指过去，判据见 trajectory skill

@@ -5,6 +5,7 @@
     "job-runner",
     "mineru-client",
     "extract",
-    "glossary"
+    "glossary",
+    "outputs"
   ]
 }

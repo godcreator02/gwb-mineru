@@ -1,7 +1,7 @@
 # gwb-mineru
 
 gwb 工作台的 MinerU 转换插件：`pdf2md` 服务（`ctx.gwbPdf2md`），
-PDF 经 MinerU 云端转 markdown。**插件名是引擎（gwb-mineru）、服务与命令是功能（pdf2md.\*），
+PDF 经 MinerU 云端转 markdown。**插件名是引擎（gwb-mineru）、服务与命令是功能（pdf2md.*），
 名不对应是有意例外**——消费方 inject 的永远是 `gwbPdf2md`。零库概念：输入 PDF 绝对路径
 与输出目录，产出 markdown + `images/`；不认识论文库（gwb-paper-fetch 的说明书让 agent 直接调 `pdf2md.submit`）。
 
@@ -14,6 +14,7 @@ PDF 经 MinerU 云端转 markdown。**插件名是引擎（gwb-mineru）、服�
 pnpm install && pnpm check                     # typecheck，再构建并跑单测
 pnpm build                                     # tsc 只出类型声明，esbuild（build.ts）出 js 并打包 adm-zip
 cd docs-site; pnpm dev                         # 文档站，http://localhost:4317
+cd docs-site; pnpm doc                         # 钉码检查；doc:confirm 写回挪了位置的钉码，doc:render 重新生成生成物
 ```
 
 进 home：`plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`。凭据：settings 节 `mineru`、
@@ -21,24 +22,24 @@ cd docs-site; pnpm dev                         # 文档站，http://localhost:43
 
 ## 硬约束
 
-* **零库概念不许破**：不认识论文库、不做归档与成品命名、不做结果缓存——产出原样放进
+- **零库概念不许破**：不认识论文库、不做归档与成品命名、不做结果缓存——产出原样放进
   调用方给的 outDir，交出去的就是原料：markdown 文件名、lang、文件清单，外加这次怎么落盘的
   （`commit` / `backup`）与没搬的清单（`skipped`）
-* **submit 必须秒回**：作业号数组先回、后台各跑各的，绝不把分钟级云端解析放进一次同步调用
-* **一个 outDir 一次只落一个作业**：提交时同步占位，同批两条冲突或与在跑的作业冲突，整批当场拒——
+- **submit 必须秒回**：作业号数组先回、后台各跑各的，绝不把分钟级云端解析放进一次同步调用
+- **一个 outDir 一次只落一个作业**：提交时同步占位，同批两条冲突或与在跑的作业冲突，整批当场拒——
   两条并排往同一个目录里解，先落定的那条账立刻不准。已有产物默认拒，要覆盖得显式 `overwrite`
-* **产物整份出现，围栏一条不合格整包不落盘**：全量 entry 过关才解进工作根 staging，
+- **产物整份出现，围栏一条不合格整包不落盘**：全量 entry 过关才解进工作根 staging，
   提交点是整体 rename；盘符/`..`/反斜杠/绝对路径/真实路径逃逸一律结构化拒（见 extract.ts）
-* **原始 zip 先落盘**：工作根留一份归档，解包失败/中断后凭它 `pdf2md.recover` 重解，
+- **原始 zip 先落盘**：工作根留一份归档，解包失败/中断后凭它 `pdf2md.recover` 重解，
   零云端零额度——别把重解包做成云端重提
-* **失败不自动重试**：失败原因如实进作业的 `error`；处置（重提）归调用方
-* **作业全并行、不聚合**：一次交 N 篇就是 N 个独立单文件任务，各自全链跑——聚合进一个
-  云端 batch\_id 是实测否掉的形状（解析连带失败）；网络抖动与并发无关（单发也撞、重试即过），
+- **失败不自动重试**：失败原因如实进作业的 `error`；处置（重提）归调用方
+- **作业全并行、不聚合**：一次交 N 篇就是 N 个独立单文件任务，各自全链跑——聚合进一个
+  云端 batch_id 是实测否掉的形状（解析连带失败）；网络抖动与并发无关（单发也撞、重试即过），
   防护靠 error 带 cause，不靠限流（见轨迹卡 parallel-and-serial-overturned）
-* **写盘排队不许拆**：多作业并行推进时作业账写盘排一条链——并发 rename 同一个 jobs.json
+- **写盘排队不许拆**：多作业并行推进时作业账写盘排一条链——并发 rename 同一个 jobs.json
   遇到过 EPERM
-* **设置项必须在 init 里 `define`**：不声明 get 永远 undefined、不报错（见轨迹卡 wall-rewrite-drops）
-* **轮询不许退回短墙钟**：失败只看云端进度停滞与总上限——墙钟会把长文档误判为失败，调用方重提就重复
+- **设置项必须在 init 里 `define`**：不声明 get 永远 undefined、不报错（见轨迹卡 wall-rewrite-drops）
+- **轮询不许退回短墙钟**：失败只看云端进度停滞与总上限——墙钟会把长文档误判为失败，调用方重提就重复
   扣额度（见轨迹卡 poll-by-progress）
 
 ## 代码地图
@@ -53,7 +54,7 @@ cd docs-site; pnpm dev                         # 文档站，http://localhost:43
 
 ## 生成物与实验材料
 
-* 仓根 `README.md`、`AGENTS.md`、`CLAUDE.md` 都是**生成物**，正本在 `docs-site/content/outputs/`，改那边
-* 实验与测量的材料放在仓根 `probes/<时间戳>_<目的>/`：一次实验一个目录、自包含（自带依赖，
+- 仓根 `README.md`、`AGENTS.md`、`CLAUDE.md` 都是**生成物**，正本在 `docs-site/content/docs/outputs/`，改那边
+- 实验与测量的材料放在仓根 `probes/<时间戳>_<目的>/`：一次实验一个目录、自包含（自带依赖，
   不进 pnpm workspace）、进 git、不进 docfirst check；evidence 卡在依据段用相对仓根的
   路径指过去，判据见 trajectory skill

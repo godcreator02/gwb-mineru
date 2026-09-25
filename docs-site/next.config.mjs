@@ -13,6 +13,8 @@ const config = {
   redirects: async () => [
     { source: '/', destination: '/future/overview', permanent: true },
     { source: '/docs', destination: '/docs/system-map', permanent: true },
+    // 生成正本挪进了现状区
+    { source: '/outputs/:path*', destination: '/docs/outputs/:path*', permanent: false },
   ],
 }
 

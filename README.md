@@ -10,17 +10,17 @@ MinerU 转换插件：提供 **pdf2md 服务**（`ctx.gwbPdf2md`）——PDF 经
 原样放进 outDir。不知道论文库存在：gwb-paper-fetch 的说明书让 agent 直接调 `pdf2md.submit`
 转论文，「一个孤立 PDF 想要 markdown」也走这条命令。
 
-* **作业模式**：`submit` 收数组、秒回作业号数组（命令是页面等着的一次调用，分钟级云端解析
+- **作业模式**：`submit` 收数组、秒回作业号数组（命令是页面等着的一次调用，分钟级云端解析
   不能在线等）；作业各自独立**全并行**（一次交 N 篇就是 N 个独立任务，云端各转各的）；
   状态机 `queued→uploading→running→done|failed|interrupted`；解析中带云端进度
   （已解析页 / 总页）；作业账经 gwbData 落盘（写盘排队）、重启标 interrupted
-* **一个 outDir 一次只落一个作业**：提交时同步占位，同批两条冲突或与在跑的作业冲突，整批当场拒；
+- **一个 outDir 一次只落一个作业**：提交时同步占位，同批两条冲突或与在跑的作业冲突，整批当场拒；
   已有产物默认拒，要覆盖得显式 `overwrite`（旧产物先整份备份进工作根）
-* **产物整份出现**：解包前全部 entry 过围栏（盘符、`..`、反斜杠、绝对路径、真实路径逃逸一律
+- **产物整份出现**：解包前全部 entry 过围栏（盘符、`..`、反斜杠、绝对路径、真实路径逃逸一律
   结构化拒，一条不合格整包不落盘），解进工作根 staging 后整体 rename 进 outDir；原始 zip 在
   工作根留一份归档，解包失败/中断后 `pdf2md.recover` 凭它零云端重解
-* **设置**：`mineru` 节一个 `token`（secret）
-* **事件**：落定时经内核 emit 通道推界面一条 `job-settled`
+- **设置**：`mineru` 节一个 `token`（secret）
+- **事件**：落定时经内核 emit 通道推界面一条 `job-settled`
 
 MinerU 客户端与 zip 解包沿用老仓 god-papers 的接口规格（只作参考）；语言判定（CJK 占比）
 是通用文本分析，放在这个插件里。
@@ -39,4 +39,4 @@ pnpm build          # tsc 只出类型声明，esbuild 出 js 并把 adm-zip 打
 ## 文档
 
 文档站在 `docs-site/`：`cd docs-site && pnpm dev`，看 `http://localhost:4317`。这份 README 是生成物，
-正本是 `docs-site/content/outputs/readme.mdx`。
+正本是 `docs-site/content/docs/outputs/readme.mdx`。
