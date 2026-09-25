@@ -9,7 +9,7 @@ description: 三块代码、一条作业从提交到终态、盘上落了什么�
 
 ## 三块代码
 
-{/* tree dir="../src" depth="2" */}
+{/* tree dir="../plugins/mineru/src" depth="2" */}
 
 | 模块 | 是什么 | 详见 |
 | --- | --- | --- |
@@ -57,9 +57,9 @@ queued → uploading → running → done | failed
 
 | 什么 | 值 |
 | --- | --- |
-| 检查 | 仓根 `pnpm check`：typecheck，再构建并跑单测 |
-| 构建 | `pnpm build`：tsc 按 `tsconfig.build.json` 只输出类型声明，`build.ts` 用 esbuild 输出 js，把 adm-zip 打包进产物（产物里的包名 import 只剩 node 内置模块与 `cordis`） |
-| 依赖 | peer 是 `cordis`（服务类按值继承它的 `Service`）与内核包；adm-zip 在 dev，打包进产物 |
+| 检查 | 仓根 `pnpm check`：对 `plugins/*` 逐个 typecheck，再构建并跑单测 |
+| 构建 | 仓根 `pnpm build`：插件包里 `build.ts` 用 esbuild 输出 js，把 adm-zip 打包进产物（产物里的包名 import 只剩 node 内置模块与 `cordis`），再由 tsc 按 `tsconfig.build.json` 只输出类型声明 |
+| 依赖 | peer 是 `cordis`（服务类按值继承它的 `Service`）、内核包与用到的四个插件（commands、data、settings，说明书插件 skills 标 optional）；adm-zip 在 dev，打包进产物 |
 | 文档站 dev | `pnpm dev`（docs-site 下），端口 4317 |
 | 凭据 | settings 节 `mineru`，键 `token`（secret），mineru.net 的 API 管理页创建 |
 | 实验材料 | 仓根 `probes/<时间戳>_<目的>/`，一次实验一个目录 |

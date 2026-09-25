@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
@@ -5,9 +6,12 @@ import { build } from 'esbuild'
 /**
  * node 侧构建：esbuild 把 adm-zip 打包进产物，构建产物里的包名 import 只剩 node 内置模块与 cordis（宿主提供，外置）。
  * 三个入口各出一个文件（dist/index.js 是插件入口，dist/core/*.js 给 tests/ 单独 import），共用的代码拆进 dist/chunks/，
- * 所以同一个类在两个入口里是同一份。类型声明由 tsc 单独输出（tsconfig.build.json）。
+ * 所以同一个类在两个入口里是同一份。类型声明由 tsc 在这之后单独输出（tsconfig.build.json）。
  */
 const here = path.dirname(fileURLToPath(import.meta.url))
+
+// chunk 文件名带哈希，上一次构建留下的旧 chunk 会随 files 白名单一起发出去，先清空
+fs.rmSync(path.join(here, 'dist'), { recursive: true, force: true })
 
 await build({
   entryPoints: ['src/index.ts', 'src/core/extract.ts', 'src/core/mineru.ts'],

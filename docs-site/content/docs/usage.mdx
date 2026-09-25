@@ -13,13 +13,13 @@ description: 消费方 inject gwbPdf2md，agent 走 pdf2md.* 四条命令；toke
 - **消费方（代码）**：`inject: ['gwbPdf2md']`，拿 `ctx.gwbPdf2md` 四方法——`submit(files)`
   （一作业一文件的数组）/ `recover(id)` / `get(id)` / `list()`
 
-{/* ref file="../src/index.ts" lines="89-107" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="89-107" */}
 
 - **agent（命令）**：`pdf2md.submit` / `pdf2md.status` / `pdf2md.jobs` / `pdf2md.recover` 四条，
   「一个孤立 PDF 想要 markdown」走这边；gwb-paper-fetch 的说明书也让 agent 直接调 `pdf2md.submit`
   转论文
 
-{/* ref file="../src/index.ts" lines="195-210" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="195-210" */}
 
 ## submit 收数组、秒回，作业各自独立同时跑
 
@@ -72,7 +72,7 @@ submit，会再花一次额度。
 设置节 `mineru`、键 `token`（secret），在 mineru.net 的 API 管理页创建；没配时 submit 报一句
 「MinerU token 没配」：
 
-{/* ref file="../src/index.ts" lines="109-119" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="109-119" */}
 
 配置命令：`settings.set { "section": "mineru", "key": "token", "value": "…" }`。值是 secret，
 status 与日志里永远看不到它。token 是**现取现读**的——settings 改值不用重新加载插件。

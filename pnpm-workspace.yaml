@@ -1,5 +1,12 @@
-# pnpm 11 起的设置文件就是这个（package.json 的 pnpm 字段已不读）。
-# 没有 packages 列表，就是只有仓根这一个包的 workspace。
+# pnpm 11 起，设置都写在这个文件里（package.json 的 pnpm 字段已不再读取）。
+#
+# 仓根是不发布的 private 包，插件放在 plugins/<短名>/。
+# 文档站 docs-site/ 自带 pnpm-workspace.yaml 与一套依赖，不收进来：pnpm 不支持 workspace 里嵌套 workspace。
+# 实验材料 probes/ 也不收进来：每个实验目录自带依赖、要能单独运行。
+
+packages:
+  - plugins/*
+
 allowBuilds:
-  # esbuild 的安装脚本要装它的原生可执行文件——不放行，pnpm build 直接失败
+  # esbuild 的安装脚本要装它的原生可执行文件，不允许它运行 pnpm build 直接失败
   esbuild: true

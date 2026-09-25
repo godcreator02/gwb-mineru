@@ -43,10 +43,12 @@ cd docs-site; pnpm dev                         # 文档站，http://localhost:43
 
 ## 代码地图
 
+仓是 pnpm workspace：仓根是 private 包，插件包 `@godcreator/gwb-mineru` 在 `plugins/mineru/`
+（`devkit.dev` / `devkit.release` 的 `packages` 写 `["plugins/mineru"]`）。插件包里：
 `src/index.ts`（作业机：状态机、账、命令、事件、outDir 占用与覆盖策略）→ `src/core/mineru.ts`
 （云端三动作）→ `src/core/extract.ts`（zip 围栏 + staging 原子提交 + 归档 + CJK 语言判定）。
 后两块是纯函数模块、互不认识；`src/vocab.ts` 是插件自带的 `isRecord` / `requireKernel`
-（词汇表包只有类型）。单测在 `tests/`，细节读文档站现状区三页。adm-zip 在 dev、由 esbuild
+（内核包的包根只导出类型）。单测在 `tests/`，细节读文档站现状区三页。adm-zip 在 dev、由 esbuild
 打包进产物——别把它挪回 `dependencies`。
 
 ## 生成物与实验材料
