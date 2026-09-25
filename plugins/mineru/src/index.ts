@@ -65,7 +65,7 @@ export interface GwbPdf2mdApi {
   /**
    * 提交一批转换作业（一作业一文件）。验完全部文件与目录、落完账才返回——**返回不是完成**，
    * 成败看 get(id) 的 state。作业各自独立、**同时开跑**（云端各转各的，谁先完谁先落）。
-   * 传半个坏形状进来是整批拒，不落半批账；两条作业瞄着同一个 outDir 也整批拒
+   * 有一条参数形状不对就整批拒，不写半批账；两条作业指向同一个 outDir 也整批拒
    * （一个 outDir 一次只落一个作业的产物）
    */
   submit(files: readonly Pdf2mdSubmitInput[]): Promise<Pdf2mdJob[]>
@@ -307,7 +307,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     return jobs
   }
 
-  /** 先查完整批再一起占：有一条撞车就一格都不占。回占下的键 */
+  /** 先查完整批再一起占：有一条冲突就一个都不占。返回占下的键 */
   private claimOutDirs(jobs: readonly Pdf2mdJob[]): string[] {
     const jobIdByOutDirInThisBatch = new Map<string, string>()
     for (const job of jobs) {

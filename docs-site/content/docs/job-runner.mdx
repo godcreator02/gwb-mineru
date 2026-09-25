@@ -36,7 +36,7 @@ MinerU 解析一篇要几十秒到几分钟，命令是调用方等着回执的�
 占用发生在第一个 `await` 之前：两个同时到来的 `submit` 不能都看到「这个 outDir 空着」。先把整批查完再一起占，所以有一条冲突就一个都不占。
 同一批里两条指向同一个目录，与遇上一条还在跑的作业，报错分开写，并写出占着它的作业号。作业到终态就放开这个 outDir：
 
-{/* ref file="../plugins/mineru/src/index.ts" lines="310-332" hash="64d57f3520d9" blob="c1ea4e1b5397" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="310-332" hash="15b24757b3fd" blob="96ba44422c60" */}
 
 outDir 已经存在时，它必须是目录；里面有东西而这一项没带 `overwrite`，提交时就拒，不排一条最后注定失败的作业。
 这只是提前检查：云端跑的几分钟里谁都可能往 outDir 里放东西，真正说了算的是解包的[提交点](/docs/extract)。

@@ -10,7 +10,7 @@ outDir 已有东西时怎么办、失败了怎么处置。插件整体怎么分�
 
 插件代码写 `inject: ['gwbPdf2md']`，拿到四个方法：
 
-{/* ref file="../plugins/mineru/src/index.ts" lines="63-81" hash="30a9d392839b" blob="c1ea4e1b5397" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="63-81" hash="3101b35071b1" blob="96ba44422c60" */}
 
 agent 与页面调四条命令：`pdf2md.submit { files }`、`pdf2md.status { id }`、`pdf2md.jobs`、`pdf2md.recover { id }`。
 命令只检查参数形状，再转给上面的方法。一个 PDF 想要 markdown 就走命令；gwb-paper-fetch 的说明书在论文进库的转换一步
