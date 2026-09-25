@@ -32,7 +32,6 @@
     }
   },
   "scripts": {
-    "//build": "两步：tsc 只输出类型声明（tsconfig.build.json），esbuild 输出 node 侧 js 并把 adm-zip 打包进去（build.ts）",
     "build": "tsc -p tsconfig.build.json && node build.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm build && node --test \"tests/*.test.mjs\"",
@@ -42,12 +41,10 @@
   "engines": {
     "node": ">=24"
   },
-  "//peerDependencies": "构建产物按值 import cordis（服务类继承 cordis 的 Service），所以 peer 写 cordis；内核包的 ^ 范围就是这个插件兼容哪个内核。规矩见 devkit 文档站「依赖怎么写」与「兼容哪个内核」",
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.4.1",
     "cordis": "^4.0.0-rc.10"
   },
-  "//devDependencies": "命令总线、数据、设置、说明书四个插件与词汇表包只取类型，运行时经 inject 使用；adm-zip 由 esbuild 打包进构建产物，产物里不留它的包名 import；cordis 再写一份给本地构建、类型检查与测试",
   "devDependencies": {
     "@godcreator/gwb-commands": "^0.4.6",
     "@godcreator/gwb-data": "^0.1.6",
