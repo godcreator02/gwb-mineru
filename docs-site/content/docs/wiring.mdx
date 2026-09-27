@@ -41,7 +41,7 @@ description: '@godcreator/gwb-mineru 提供的服务、命令、事件与说明�
 | `gwbSettings` | `@godcreator/gwb-settings` | 必需（`static inject`） | `^0.3.5` | 声明并读取 token | 插件不加载 |
 | `gwbData` | `@godcreator/gwb-data` | 必需（`static inject`） | `^0.1.9` | 作业账文档 `jobs` 的读写 | 插件不加载 |
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `^0.4.7`，`optional: true` | 登记包里的说明书 | 作业机照常加载，agent 读不到说明书 |
-| `gwbKernel` | `@godcreator/gwb-kernel-desktop` | 不写进 `inject`，`requireKernel` 取 | `^0.7.2` | `emit` 推 `job-settled` | 不在 gwb 内核里运行时，第一次推事件就抛错 |
+| `gwbKernel` | `@godcreator/gwb-kernel-desktop` | 不写进 `inject`，`requireKernel` 取 | `^0.8.0` | `emit` 推 `job-settled` | 不在 gwb 内核里运行时，第一次推事件就抛错 |
 
 peer 里另有 `cordis`（`^4.0.0-rc.10`）：服务类按值继承它的 `Service`。
 
@@ -51,7 +51,7 @@ peer 里另有 `cordis`（`^4.0.0-rc.10`）：服务类按值继承它的 `Servi
 
 {/* has file="../plugins/mineru/src/index.ts" text="requireKernel(this.providerContext).emit(" */}
 
-{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.7.2&quot;" */}
+{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.8.0&quot;" */}
 
 {/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;^0.5.2&quot;" */}
 
