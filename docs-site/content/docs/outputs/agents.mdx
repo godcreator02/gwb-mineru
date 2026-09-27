@@ -14,16 +14,16 @@ gwb-mineru 是 gwb 工作台的插件：提供服务 `gwbPdf2md` 与命令 `pdf2
 ```powershell
 pnpm install && pnpm check                     # 仓根：对 plugins/* 逐个 typecheck，再构建并跑单测
 pnpm build                                     # esbuild（build.ts）输出 js 并打包 adm-zip，tsc 只输出类型声明
-cd docs-site; pnpm dev                         # 文档站，http://localhost:4317
+cd docs-site; pnpm build; pnpm start           # 文档站，http://localhost:4317；不用 pnpm dev，改了内容重新 build
 cd docs-site; pnpm doc                         # 钉码检查；doc:confirm 写回挪了位置的钉码，doc:render 重新生成生成物
 ```
 
 装进 home：`plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`；`devkit.dev` / `devkit.release` 的 `packages` 写 `["plugins/mineru"]`。
-凭据是设置节 `mineru` 的 `token`（secret，mineru.net 的 API 管理页创建），在隔离 home 里走真云端要配真 token。
+凭据是设置节 `mineru` 的 `token`（secret，mineru.net 的 API 管理页创建），在隔离 home 里要调用真实的 MinerU 云端，就得配上真实的 token。
 
 ## 硬约束
 
-- **零库概念**：不认识论文库、不给成品命名、不缓存结果；产物原样放进调用方给的 outDir
+- **不认识论文库**：不知道论文库的存在、不给成品命名、不缓存结果；产物原样放进调用方给的 outDir
 - **submit 立即返回**：作业号先回，云端解析放在后台，绝不放进一次同步调用
 - **一个 outDir 同一时间只归一条作业**：提交时同步占用，同批冲突或与在跑的作业冲突整批拒；已有产物默认拒，覆盖要显式 `overwrite`
 - **产物整份出现**：全部 entry 过了围栏才在工作根的 staging 里解，提交是整个改名；有一条不合格整个 zip 不写
