@@ -23,9 +23,9 @@ MinerU 解析一篇要几十秒到几分钟，而命令是调用方等着回执�
 
 <SeamMap />
 
-插件分三块代码：作业机（`src/index.ts`）管作业的一生，云端客户端（`src/core/mineru.ts`）只会跟 MinerU 说三句话，
+插件分三块代码：作业机（`src/index.ts`）管作业从提交到终态的全过程，云端客户端（`src/core/mineru.ts`）只向 MinerU 发三种请求，
 解包（`src/core/extract.ts`）只会把一份 zip 安全地变成 outDir 里的文件。后两块互相不认识，都不依赖 cordis，
-是作业机手里的两个工具；依赖只从作业机往下走。
+都只被作业机调用；依赖只从作业机往下走。
 
 {/* tree dir="../plugins/mineru/src" depth="2" hash="f88732382aab" */}
 
@@ -37,7 +37,7 @@ MinerU 解析一篇要几十秒到几分钟，而命令是调用方等着回执�
 `submit([{ input: 'D:/papers/a.pdf', outDir: 'D:/papers/a' }])` 回一个作业数组，`state` 是 `queued`——返回不是完成。
 接口与作业记录的形状是本包导出的 `GwbPdf2mdApi` 与 `Pdf2mdJob`，消费方从发布的 `.d.ts` 读：
 
-{/* has file="../plugins/mineru/src/index.ts" text="gwbPdf2md: GwbPdf2mdApi" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="520-520" hash="fe8d96ac08ae" blob="96ba44422c60" */}
 
 作业机负责：整批检查（有一条不合格整批拒、一条账都不写）、同一个 outDir 同一时间只归一条作业、作业账写进磁盘之后才返回。
 它不负责：出了 outDir 之后文件怎么命名、放进哪个库——那是调用方的事。`tests/job-runner.test.mjs` 用真 cordis 上下文加
@@ -54,9 +54,9 @@ agent 经 MCP 入口、页面经 shell 的 `host.call` 与 commands 客户端 �
 
 凭据是一个 secret 设置项：作业机在 init 里 `define` 它，`submit` 每次调用时读一次，改了值不用重新加载插件。
 节名 `mineru` 由设置插件按条目 id 算出。不在 init 里 `define`，`get` 永远回 undefined 且不报错——
-踩过这个坑，见轨迹卡[重写删掉了三样看不见的东西](/trajectory/2026-09-08-wall-rewrite-drops)。
+出过这个问题，见轨迹卡[重写删掉了三样看不见的东西](/trajectory/2026-09-08-wall-rewrite-drops)。
 
-{/* has file="../plugins/mineru/src/index.ts" text="key: 'token'" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="85-85" hash="4e1ba31d614f" blob="96ba44422c60" */}
 
 设置插件写在 `static inject` 里，缺了插件不加载；token 没配时 `submit` 当场拒。测试替身的 `get('token')` 回一个假值。
 
@@ -65,7 +65,7 @@ agent 经 MCP 入口、页面经 shell 的 `host.call` 与 commands 客户端 �
 作业账是数据插件管的一份文档 `jobs`，内容是 `{ jobs: Pdf2mdJob[] }`。每次状态推进、进度变化、新作业入列都整份重写一次，
 写入排成一条链（同一个文件并发改名在 Windows 上报过 EPERM）。启动时读回来，上次没跑完的作业标成 `interrupted`，不重跑。
 
-{/* has file="../plugins/mineru/src/index.ts" text="const JOBS_DOC_NAME = 'jobs'" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="16-16" hash="3ee5aa4f8b99" blob="96ba44422c60" */}
 
 数据插件写在 `static inject` 里，缺了插件不加载；写盘失败时 `submit` 整批拒并撤回刚入列的作业。测试替身把文档放在内存
 Map 里，没有断言写进去的形状。
@@ -76,7 +76,7 @@ Map 里，没有断言写进去的形状。
 `{ source: 'gwb-mineru', type: 'job-settled', jobId, ok, outDir, error? }`。事件在作业账写盘之后才发。
 事件是给看着界面的人的；agent 照样查 `pdf2md.status`。内核用 `requireKernel` 取，不写进 `inject`。
 
-{/* has file="../plugins/mineru/src/index.ts" text="type: 'job-settled'" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="458-458" hash="1745df02e906" blob="96ba44422c60" */}
 
 测试替身内核把事件收进数组，没有断言。
 
@@ -84,7 +84,7 @@ Map 里，没有断言写进去的形状。
 
 包里的说明书经说明书插件登记，局部注入：没装说明书插件的 home 里作业机照常加载，只是 agent 读不到这份说明书。
 
-{/* has file="../plugins/mineru/src/index.ts" text="this.providerContext.inject(['gwbSkills']" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="213-213" hash="77f0ebad30e4" blob="96ba44422c60" */}
 
 ### ⑦ 全链 → 云端客户端
 
@@ -93,7 +93,7 @@ Map 里，没有断言写进去的形状。
 总上限（1 小时）都由作业机传进去；云端客户端只负责按这些数判断，结果是「解析失败」「停滞」还是「超时」都写进 `err_msg`，
 不抛错。它不知道作业、作业账与作业号。
 
-{/* has file="../plugins/mineru/src/core/mineru.ts" text="export async function poll(token: string, batchId: string, options: PollOptions): Promise<FileResult>" */}
+{/* ref file="../plugins/mineru/src/core/mineru.ts" lines="100-100" hash="1f3dbd2c2bad" blob="8aab970ebcb2" */}
 
 `tests/job-runner.test.mjs` 换掉全局 `fetch` 模拟云端，第一次轮询就回终态，所以停滞与超时的判断没有单测；它们的证据在
 `probes/2609172224_poll-and-live-run/`。
@@ -105,17 +105,17 @@ Map 里，没有断言写进去的形状。
 （markdown 文件名、语言、文件清单、没搬的条目、归档路径、这次是新建还是覆盖）。失败抛 `ArchiveError` 一族，
 归档已经写到磁盘时错误上带着 `archive`，作业机把它记进作业账，`recover` 才有东西可用。
 
-{/* has file="../plugins/mineru/src/core/extract.ts" text="export async function downloadExtract(zipUrl: string, outDir: string, options: ExtractOptions): Promise<ExtractResult>" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="108-108" hash="42df622cbb58" blob="1ec2fd1acdda" */}
 
 `tests/extract.test.mjs` 直接调这两个函数，`tests/job-runner.test.mjs` 从作业机那一侧再走一遍。
 
 ### ⑨ 云端客户端 → MinerU
 
-三个 HTTP 请求：`POST /file-urls/batch` 申请上传位（请求里钉死 vlm 模型、开公式与表格、语言 `ch`）、`PUT` 预签名地址上传 PDF、
+三个 HTTP 请求：`POST /file-urls/batch` 申请上传位（请求里写死 vlm 模型、开公式与表格、语言 `ch`）、`PUT` 预签名地址上传 PDF、
 `GET /extract-results/batch/{batchId}` 轮询。回包里的 `code` 或 `msgCode` 不是 0 就抛 `MineruError`，认得出的错误码
 （token 失效、超 200MB、超 200 页、当天任务数到上限）附一句照着就能做的话。
 
-{/* has file="../plugins/mineru/src/core/mineru.ts" text="const API_BASE = 'https://mineru.net/api/v4'" */}
+{/* ref file="../plugins/mineru/src/core/mineru.ts" lines="3-3" hash="7ccaa959fe5a" blob="8aab970ebcb2" */}
 
 真云端只在 `probes/` 的实验里跑过，单测全用替身。
 
@@ -123,7 +123,7 @@ Map 里，没有断言写进去的形状。
 
 `downloadExtract` 用 `GET` 取 `full_zip_url`，600 秒超时；非 2xx 直接抛错，这时还没有归档，作业只能重新提交。
 
-{/* has file="../plugins/mineru/src/core/extract.ts" text="const resp = await fetch(zipUrl, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="110-110" hash="1ce4383033f8" blob="1ec2fd1acdda" */}
 
 ### ⑪ 解包 ⇢ 工作根
 
@@ -132,7 +132,7 @@ Map 里，没有断言写进去的形状。
 `backup-<时间>/`，以及覆盖途中崩溃后用来把旧产物搬回去的 `commit-journal.json`。工作根不在 outDir 里，
 这样 outDir 才能整个替换。调用方随时可以删掉工作根，正在跑的作业除外；备份不会自动清。
 
-{/* has file="../plugins/mineru/src/core/extract.ts" text="const WORK_ROOT_SUFFIX = '.pdf2md'" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="8-8" hash="ddfaf91ed2ad" blob="1ec2fd1acdda" */}
 
 `tests/extract.test.mjs` 断言失败时工作根里只剩归档、没有 staging 残骸；`commit-journal.json` 的回滚没有测试。
 
@@ -142,7 +142,7 @@ Map 里，没有断言写进去的形状。
 要么是完整的新版，没有新旧混着的状态。outDir 里已经有东西而这条作业没带 `overwrite`，提交点拒绝、一个字节不动；
 带了 `overwrite`，旧产物先整个挪进工作根的备份。
 
-{/* has file="../plugins/mineru/src/core/extract.ts" text="await renameStagedOrRejectConflict(staged, outDir, archive)" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="285-322" hash="10af445eec88" blob="1ec2fd1acdda" */}
 
 `tests/extract.test.mjs` 覆盖默认拒、显式覆盖、outDir 是文件、两条解包同时抢一个 outDir。
 
@@ -157,7 +157,7 @@ Map 里，没有断言写进去的形状。
 ## 刻意不做的事
 
 - 不认识论文库：不做归档副本、不给成品命名、不做翻译与规格化，出了 outDir 都是调用方的事（[根卡](/trajectory/2026-09-08-gwb-mineru)）
-- 不缓存结果、不按内容去重：同一个 PDF 交两次就完整跑两遍，存第二份就长出了「库」（[根卡](/trajectory/2026-09-08-gwb-mineru)）
+- 不缓存结果、不按内容去重：同一个 PDF 交两次就完整跑两遍，存第二份就成了一个「库」（[根卡](/trajectory/2026-09-08-gwb-mineru)）
 - 失败不自动重试、不自动续取：要不要再花一次解析额度由调用方决定；本地凭归档重新解包不算重试（[作业改串行](/trajectory/2026-09-17-serial-jobs)、[续取](/trajectory/2026-09-18-resume-and-batch-shape)）
 - 不把多个文件合进一个云端批：实测合批会连带解析失败（[全并行](/trajectory/2026-09-18-parallel-and-serial-overturned)）
 - 没有并发数设置、优先级与取消排队：作业全部同时跑，连接抖动与并发无关（[全并行](/trajectory/2026-09-18-parallel-and-serial-overturned)）
@@ -168,4 +168,4 @@ Map 里，没有断言写进去的形状。
 ## 按来意读
 
 要调用它读[用法](/docs/usage)；要改作业怎么排、账怎么记读[作业机](/docs/job-runner)；要改跟 MinerU 的对话读
-[云端客户端](/docs/mineru-client)；要改 zip 怎么落到磁盘上读[解包](/docs/extract)；碰到不认识的词查[术语表](/docs/glossary)。
+[云端客户端](/docs/mineru-client)；要改 zip 怎么写到磁盘上读[解包](/docs/extract)；碰到不认识的词查[术语表](/docs/glossary)。

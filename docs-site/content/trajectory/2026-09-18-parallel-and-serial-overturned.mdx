@@ -2,7 +2,7 @@
 title: 0.5.0 全并行翻两案：串行是对网络抖动的误判，聚合进一个云端批被实测否决；0.4.0 续取经人否决移除
 born-at: 2026-09-18T13:55
 type: choice
-parent: [2026-09-08-gwb-mineru, 2026-09-17-serial-jobs, 2026-09-18-resume-and-batch-shape]
+parent: [2026-09-08-gwb-mineru]
 label: 全并行
 domain: 作业机
 ---
@@ -10,6 +10,9 @@ domain: 作业机
 ## 背景
 
 人点了路线页五条里的两条并改了主意：「一批多文件」要的是**一次交几篇、按 MinerU 的规则并行**（不是当年留缝时想的那种传输层合批）；0.4.0 的续取（resume）整个撤掉——「做太快了、没这个需求」。对着 0.3.0 的串行，人一句话点破层次：「你的串行和 mineru 的并行不是一个层次的」。于是重开探针，把 MinerU 的批与并行到底什么逻辑量清楚再说。
+
+supersedes:: [作业串行](2026-09-17-serial-jobs.mdx)
+supersedes:: [续取](2026-09-18-resume-and-batch-shape.mdx)
 
 ## 结论与边界
 

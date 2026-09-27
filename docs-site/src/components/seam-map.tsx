@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type KeyboardEvent } from 'react'
+import './seam-colors.css'
 
 type ModuleId = 'runner' | 'client' | 'extract'
 

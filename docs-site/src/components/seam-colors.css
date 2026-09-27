@@ -1,0 +1,12 @@
+/* 接缝图（seam-map.tsx）与作业状态演示（job-lifecycle.tsx）共用的颜色：中性色跟 fumadocs 主题走，强调色深浅各给一套 */
+:root {
+  --seam-accent: #c2410c;
+  --seam-accent-soft: color-mix(in srgb, var(--seam-accent) 14%, transparent);
+  --seam-line: color-mix(in srgb, var(--color-fd-foreground) 50%, transparent);
+  --seam-frame: color-mix(in srgb, var(--color-fd-foreground) 38%, transparent);
+  --seam-badge: var(--color-fd-background);
+}
+
+.dark {
+  --seam-accent: #fb923c;
+}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import './seam-colors.css'
 
 type JobState = 'queued' | 'uploading' | 'running' | 'done' | 'failed' | 'interrupted'
 

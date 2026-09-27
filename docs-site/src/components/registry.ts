@@ -5,7 +5,7 @@
  * 两张表少了哪一张都是硬失败：规则表没有 → 生成 markdown 时报「名册外组件」；
  * React 表没有 → 站渲染时报 Expected component。
  *
- * Note、Files、Folder、File 的规则在格式包的默认表里（目录树引用生成的就是后三个）；SeamMap 是首页的接缝图，JobLifecycle 是作业机页的状态变化演示。
+ * Note、Files、Folder、File 的规则在 @godcreator/docfirst-workflow/fumadocs/roster 的 fumadocsRoster 里（目录树引用生成的就是后三个）；SeamMap 是首页的接缝图，JobLifecycle 是作业机页的状态变化演示。
  * 这个文件只有可擦除的类型，Node 直接运行。
  */
 export const componentNames = ['Note', 'Files', 'Folder', 'File', 'SeamMap', 'JobLifecycle'] as const

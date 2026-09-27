@@ -19,19 +19,19 @@ description: '@godcreator/gwb-mineru 提供的服务、命令、事件与说明�
 | 事件 | `job-settled` | 作业到 `done` / `failed` 时经内核推送给页面，`source` 是 `gwb-mineru` |
 | 说明书 | `pdf2md` | 包里的 `skills/pdf2md/SKILL.md` |
 
-{/* has file="../plugins/mineru/src/index.ts" text="gwbPdf2md: GwbPdf2mdApi" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="520-520" hash="fe8d96ac08ae" blob="96ba44422c60" */}
 
-{/* has file="../plugins/mineru/src/index.ts" text="name: 'pdf2md.submit'" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="167-167" hash="6e99c3b75d04" blob="96ba44422c60" */}
 
-{/* has file="../plugins/mineru/src/index.ts" text="name: 'pdf2md.status'" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="192-192" hash="253ba3fc1a49" blob="96ba44422c60" */}
 
-{/* has file="../plugins/mineru/src/index.ts" text="name: 'pdf2md.jobs'" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="186-186" hash="f4e31957617a" blob="96ba44422c60" */}
 
-{/* has file="../plugins/mineru/src/index.ts" text="name: 'pdf2md.recover'" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="203-203" hash="a6db4eb1236c" blob="96ba44422c60" */}
 
-{/* has file="../plugins/mineru/src/index.ts" text="type: 'job-settled'" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="458-458" hash="1745df02e906" blob="96ba44422c60" */}
 
-{/* has file="../plugins/mineru/skills/pdf2md/SKILL.md" text="name: pdf2md" */}
+{/* ref file="../plugins/mineru/skills/pdf2md/SKILL.md" lines="2-2" hash="1b11fe8b4133" blob="d3a259beff8c" */}
 
 ### 注入
 
@@ -45,21 +45,21 @@ description: '@godcreator/gwb-mineru 提供的服务、命令、事件与说明�
 
 peer 里另有 `cordis`（`^4.0.0-rc.10`）：服务类按值继承它的 `Service`。
 
-{/* has file="../plugins/mineru/src/index.ts" text="static inject = ['gwbCommands', 'gwbSettings', 'gwbData']" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="130-130" hash="f3e25754b611" blob="96ba44422c60" */}
 
-{/* has file="../plugins/mineru/src/index.ts" text="this.providerContext.inject(['gwbSkills']" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="213-213" hash="77f0ebad30e4" blob="96ba44422c60" */}
 
-{/* has file="../plugins/mineru/src/index.ts" text="requireKernel(this.providerContext).emit(" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="456-456" hash="725ee1ac9a80" blob="96ba44422c60" */}
 
-{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.10.0&quot;" */}
+{/* ref file="../plugins/mineru/package.json" lines="48-48" hash="5c8ad9cb296d" blob="91350a5d87b5" */}
 
-{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;^0.5.6&quot;" */}
+{/* ref file="../plugins/mineru/package.json" lines="49-49" hash="d38869ebe0ad" blob="91350a5d87b5" */}
 
-{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-data&quot;: &quot;^0.1.9&quot;" */}
+{/* ref file="../plugins/mineru/package.json" lines="50-50" hash="a19d5c2efcd0" blob="91350a5d87b5" */}
 
-{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-settings&quot;: &quot;^0.3.5&quot;" */}
+{/* ref file="../plugins/mineru/package.json" lines="51-51" hash="2580c5f58c3a" blob="91350a5d87b5" */}
 
-{/* has file="../plugins/mineru/package.json" text="&quot;@godcreator/gwb-skills&quot;: &quot;^0.4.7&quot;" */}
+{/* ref file="../plugins/mineru/package.json" lines="52-52" hash="f0a5da0d8007" blob="91350a5d87b5" */}
 
 ### 按名字调用与约定通道
 
@@ -69,8 +69,8 @@ peer 里另有 `cordis`（`^4.0.0-rc.10`）：服务类按值继承它的 `Servi
 | 磁盘 | 调用方 | outDir 与它旁边的工作根 `.<outDir 名>.pdf2md/` | 产物、归档、staging、备份、提交 journal，见[解包](/docs/extract) |
 | 约定 | gwb-paper-fetch 的说明书 | `pdf2md.submit` | 论文进库的转换一步让 agent 直接调用这条命令；本插件不认识它 |
 
-{/* has file="../plugins/mineru/src/core/mineru.ts" text="const API_BASE = 'https://mineru.net/api/v4'" */}
+{/* ref file="../plugins/mineru/src/core/mineru.ts" lines="3-3" hash="7ccaa959fe5a" blob="8aab970ebcb2" */}
 
-{/* has file="../plugins/mineru/src/core/extract.ts" text="const WORK_ROOT_SUFFIX = '.pdf2md'" */}
+{/* ref file="../plugins/mineru/src/core/extract.ts" lines="8-8" hash="ddfaf91ed2ad" blob="1ec2fd1acdda" */}
 
 本插件不按命令名调用别的插件的命令。
