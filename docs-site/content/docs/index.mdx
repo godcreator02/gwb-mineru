@@ -45,7 +45,7 @@ MinerU 解析一篇要几十秒到几分钟，而命令是调用方等着回执�
 
 ### ② 命令总线 → 四条命令
 
-agent 经 MCP 入口、页面经 `window.gwb.command` 调的是命令：`pdf2md.submit { files }`、`pdf2md.status { id }`、
+agent 经 MCP 入口、页面经 shell 的 `host.call` 与 commands 客户端 调的是命令：`pdf2md.submit { files }`、`pdf2md.status { id }`、
 `pdf2md.jobs`、`pdf2md.recover { id }`。作业机在 init 里经 `gwbCommands.register` 登记它们，命令处理函数只检查参数形状、
 再转给服务的对应方法，回执是作业记录（`pdf2md.jobs` 回 `{ count, jobs }`）。命令总线写在 `static inject` 里，缺了它插件不加载。
 四条命令的参数与回执逐条写在[用法](/docs/usage)；命令处理函数本身没有测试，测试替身的 `register` 什么也不做。
