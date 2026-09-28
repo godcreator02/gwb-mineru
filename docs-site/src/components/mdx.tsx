@@ -1,7 +1,7 @@
 /**
- * MDX 组件的 React 表。docfirst.config.mjs 声明生成 markdown 时每个组件变成什么文字，这里给站上渲染用的组件。
- * 表的类型由 registry.ts 的名单决定：少一个、多一个都编译不过；跟规则表齐不齐由 scripts/verify-roster.mjs 核对。
- * 先铺 fumadocs 的默认组件，再加本站的组件，最后把 pre 换成 @godcreator/docfirst-workflow/fumadocs/pre 里会显示钉码状态的 DocfirstPre。
+ * MDX 组件的 React 表。docfirst.config.mjs 声明每个组件在机读版里变成什么文字，这里给站上渲染用的组件。
+ * 表的类型由 registry.ts 的名单决定：少一个、多一个都编译不过；跟机读规则表是否一致由 scripts/verify-roster.mjs 核对。
+ * 先放 fumadocs 的默认组件，再加本站的组件，最后把 pre 换成 @godcreator/docfirst-workflow/fumadocs/pre 里会显示钉码状态的 DocfirstPre。
  */
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { File, Files, Folder } from 'fumadocs-ui/components/files';
