@@ -164,7 +164,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     if (commandBus === undefined) return
     this.providerContext.effect(() =>
       commandBus.register(
-        { name: 'pdf2md.submit', description: '提交一批 PDF 转 markdown 作业，秒回作业号，作业各自独立同时跑', usage: '参数 { files: [{ input, outDir, overwrite? }, …] }：files 非空，input 是存在的 PDF 绝对路径（不超 200MB），outDir 是绝对路径；outDir 里已有产物默认整批拒，overwrite: true 才覆盖（旧产物先备份）；同批两条同一个 outDir、或 outDir 被在跑的作业占着，也整批拒。回作业数组 [{ id, input, outDir, state: "queued", createdAt, updatedAt, overwrite? }]——返回不是完成，成败看 pdf2md.status' },
+        { name: 'pdf2md.submit', description: '提交一批 PDF 转 markdown 作业，秒回作业号，作业各自独立同时跑', usage: '参数 { files: [{ input, outDir, overwrite? }, …] }：files 非空，input 是存在的 PDF 绝对路径（不超 200MB），outDir 是绝对路径；outDir 里已有产物默认整批拒，overwrite: true 才覆盖（旧产物先备份）；同批两条同一个 outDir、或 outDir 被在跑的作业占着，也整批拒。回作业数组 [{ id, input, outDir, state: "queued", createdAt, updatedAt, overwrite? }]——返回不是完成，成败看 pdf2md.status', effect: 'external' },
         async (args) => {
           const raw = isRecord(args) ? args : {}
           const files = raw['files']
@@ -183,13 +183,13 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
       ),
     )
     this.providerContext.effect(() =>
-      commandBus.register({ name: 'pdf2md.jobs', description: '全部转换作业（新的在前）', usage: '无参数。回 { count, jobs: [作业, …] }，作业形状同 pdf2md.status 的回执' }, () => ({
+      commandBus.register({ name: 'pdf2md.jobs', description: '全部转换作业（新的在前）', usage: '无参数。回 { count, jobs: [作业, …] }，作业形状同 pdf2md.status 的回执', effect: 'read' }, () => ({
         count: this.jobsById.size,
         jobs: this.list(),
       })),
     )
     this.providerContext.effect(() =>
-      commandBus.register({ name: 'pdf2md.status', description: '查一条转换作业', usage: '参数 { id }（非空字符串）。回那条作业 { id, input, outDir, state: queued|uploading|running|done|failed|interrupted, createdAt, updatedAt, error?, batchId?, overwrite?, progress?: { extractedPages, totalPages }, markdown?, lang?: zh|en, files?, skipped?, archive?, commit?: created|replaced, backup? }，云端解析中才带 progress；没有这个 id 报错' }, (args) => {
+      commandBus.register({ name: 'pdf2md.status', description: '查一条转换作业', usage: '参数 { id }（非空字符串）。回那条作业 { id, input, outDir, state: queued|uploading|running|done|failed|interrupted, createdAt, updatedAt, error?, batchId?, overwrite?, progress?: { extractedPages, totalPages }, markdown?, lang?: zh|en, files?, skipped?, archive?, commit?: created|replaced, backup? }，云端解析中才带 progress；没有这个 id 报错', effect: 'read' }, (args) => {
         const raw = isRecord(args) ? args : {}
         const id = raw['id']
         if (typeof id !== 'string' || id === '') throw new Error('pdf2md.status 要 { id: string }')
@@ -200,7 +200,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
     )
     this.providerContext.effect(() =>
       commandBus.register(
-        { name: 'pdf2md.recover', description: '用作业盘上那份原始 zip 重新解包进它的 outDir，不再花云端额度', usage: '参数 { id }（非空字符串）。只对 failed / interrupted、账上有 archive 且归档文件还在的作业有效，outDir 被别的作业占着时拒。回解包后的那条作业（state: "done"，形状同 pdf2md.status 的回执）；解包失败报错，作业记 failed' },
+        { name: 'pdf2md.recover', description: '用作业盘上那份原始 zip 重新解包进它的 outDir，不再花云端额度', usage: '参数 { id }（非空字符串）。只对 failed / interrupted、账上有 archive 且归档文件还在的作业有效，outDir 被别的作业占着时拒。回解包后的那条作业（state: "done"，形状同 pdf2md.status 的回执）；解包失败报错，作业记 failed', effect: 'write' },
         async (args) => {
           const raw = isRecord(args) ? args : {}
           const id = raw['id']

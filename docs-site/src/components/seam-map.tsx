@@ -54,7 +54,7 @@ const BOXES: readonly Box[] = [
   { id: 'skill', x: 280, y: 342, w: 190, h: 48, title: '说明书', code: 'skills/pdf2md/SKILL.md', module: 'runner' },
   { id: 'upload', x: 282, y: 452, w: 282, h: 36, title: '申请上传位 · 上传', code: 'requestUpload · upload', module: 'client' },
   { id: 'poll', x: 282, y: 494, w: 282, h: 36, title: '轮询到终态', code: 'poll', module: 'client' },
-  { id: 'errors', x: 282, y: 536, w: 282, h: 36, title: '回包认错', code: 'readResponseData → MineruError', module: 'client' },
+  { id: 'errors', x: 282, y: 536, w: 282, h: 36, title: '从响应认出错误', code: 'readResponseData → MineruError', module: 'client' },
   { id: 'unzip', x: 612, y: 452, w: 282, h: 36, title: '下载 · 从归档解', code: 'downloadExtract · extractArchive', module: 'extract' },
   { id: 'fence', x: 612, y: 494, w: 282, h: 36, title: '围栏', code: 'splitEntryNameThroughFence', module: 'extract' },
   { id: 'commit', x: 612, y: 536, w: 282, h: 36, title: '提交点', code: 'commitStagedIntoOutDir', module: 'extract' },
@@ -72,7 +72,7 @@ const SEAMS: readonly Seam[] = [
   {
     n: 2, from: 'bus', to: 'commands', points: [[585, 132], [585, 222]], badge: [585, 176], onDisk: false,
     title: '命令总线 → 四条命令',
-    contract: 'init 里 gwbCommands.register 四条：pdf2md.submit { files }、pdf2md.status { id }、pdf2md.jobs、pdf2md.recover { id }。回执是作业记录，形状同 Pdf2mdJob。',
+    contract: 'init 里 gwbCommands.register 四条：pdf2md.submit { files }、pdf2md.status { id }、pdf2md.jobs、pdf2md.recover { id }，effect 依次是 external（PDF 上传到云端）、read、read、write。回执是作业记录，形状同 Pdf2mdJob。',
   },
   {
     n: 3, from: 'settings', to: 'service', points: [[220, 246], [280, 246]], badge: [250, 246], onDisk: false,
@@ -87,7 +87,7 @@ const SEAMS: readonly Seam[] = [
   {
     n: 5, from: 'settled', to: 'kernel', points: [[798, 222], [798, 132]], badge: [798, 176], onDisk: false,
     title: '终态事件 → 内核',
-    contract: 'emit({ source: "gwb-mineru", type: "job-settled", jobId, ok, outDir, error? })，只在 done / failed 时发，账落盘之后才发。',
+    contract: 'emit({ source: "gwb-mineru", type: "job-settled", jobId, ok, outDir, error? })，只在 done / failed 时发，作业账写进磁盘之后才发。',
   },
   {
     n: 6, from: 'skills', to: 'skill', points: [[220, 366], [280, 366]], badge: [250, 366], onDisk: false,
@@ -102,12 +102,12 @@ const SEAMS: readonly Seam[] = [
   {
     n: 8, from: 'chain', to: 'unzip', points: [[640, 330], [640, 452]], badge: [640, 410], onDisk: false,
     title: '全链 → 解包',
-    contract: 'downloadExtract(zipUrl, outDir, { jobId, overwrite? }) 或 extractArchive(归档, outDir, …) → ExtractResult；失败抛 ArchiveError 一族，归档已落盘时带 archive 路径。',
+    contract: 'downloadExtract(zipUrl, outDir, { jobId, overwrite? }) 或 extractArchive(归档, outDir, …) → ExtractResult；失败抛 ArchiveError 一族，归档已写进磁盘时带 archive 路径。',
   },
   {
     n: 9, from: 'poll', to: 'cloud', points: [[422, 590], [422, 632]], badge: [422, 611], onDisk: false,
     title: '云端客户端 → MinerU',
-    contract: 'POST /file-urls/batch 申请上传位，PUT 预签名地址传 PDF，GET /extract-results/batch/{batchId} 轮询。回包 code / msgCode 非 0 抛 MineruError。',
+    contract: 'POST /file-urls/batch 申请上传位，PUT 预签名地址传 PDF，GET /extract-results/batch/{batchId} 轮询。响应里的 code / msgCode 非 0 抛 MineruError。',
   },
   {
     n: 10, from: 'unzip', to: 'cloud', points: [[612, 470], [588, 470], [588, 660], [580, 660]], badge: [588, 540], onDisk: false,

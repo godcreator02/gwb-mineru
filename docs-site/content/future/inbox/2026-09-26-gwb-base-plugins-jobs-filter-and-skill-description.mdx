@@ -1,0 +1,12 @@
+---
+title: 'pdf2md.jobs 补筛选或条数参数，pdf2md 说明书的描述缩短'
+description: '来源：gwb-base-plugins（D:\unitfolders\igldu-gwbkernel\gwb-base-plugins），2026-09-26；总控台会话投递。原反馈里「四条命令标 effect」一项已于 2026-09-30 做完，这里只剩没做的两项'
+docfirst: none
+---
+
+* **现状**：MCP 入口（`@godcreator/gwb-mcp` 0.11.0 起）的 `run` 返回超过 40000 字符时不交回原文（命令已经执行完），改回 isError，请 agent 带上筛选参数重调。
+  `pdf2md.jobs` 无参数，回全部作业，作业攒多了就会超过这个上限，agent 拿不到结果、也没有参数可以缩小范围。
+  另外说明书 `pdf2md` 的描述超过 200 字，MCP 入口 `index` 会截断。
+* **期望**：
+  1. `pdf2md.jobs` 补上筛选或条数参数（比如按状态筛、只回最近 N 条），并写进 usage
+  2. 说明书 `pdf2md` 的 `description` 缩到 200 字以内
