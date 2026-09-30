@@ -37,7 +37,7 @@ description: '@godcreator/gwb-mineru 提供的服务、命令、事件与说明�
 
 | 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- | --- | --- | --- |
-| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`static inject`） | `^0.5.6` | 登记四条 `pdf2md.*` 命令 | 插件不加载 |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`static inject`） | `^0.6.0` | 登记四条 `pdf2md.*` 命令 | 插件不加载 |
 | `gwbSettings` | `@godcreator/gwb-settings` | 必需（`static inject`） | `^0.3.5` | 声明并读取 token | 插件不加载 |
 | `gwbData` | `@godcreator/gwb-data` | 必需（`static inject`） | `^0.1.9` | 作业账文档 `jobs` 的读写 | 插件不加载 |
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `^0.4.7`，`optional: true` | 登记包里的说明书 | 作业机照常加载，agent 读不到说明书 |
@@ -53,7 +53,7 @@ peer 里另有 `cordis`（`^4.0.0-rc.10`）：服务类按值继承它的 `Servi
 
 {/* ref file="../plugins/mineru/package.json" lines="48-48" hash="5c8ad9cb296d" blob="91350a5d87b5" */}
 
-{/* ref file="../plugins/mineru/package.json" lines="49-49" hash="d38869ebe0ad" blob="91350a5d87b5" */}
+{/* ref file="../plugins/mineru/package.json" lines="49-49" hash="2c178017df80" blob="5f3374b1c3a9" */}
 
 {/* ref file="../plugins/mineru/package.json" lines="50-50" hash="a19d5c2efcd0" blob="91350a5d87b5" */}
 
