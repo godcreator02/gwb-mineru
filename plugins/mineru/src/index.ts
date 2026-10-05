@@ -221,7 +221,7 @@ export default class GwbMineru extends Service implements GwbPdf2mdApi {
   async submit(files: readonly Pdf2mdSubmitInput[]): Promise<Pdf2mdJob[]> {
     if (!Array.isArray(files) || files.length === 0) throw new Error('submit 要 files: [{ input, outDir }, …] 非空数组')
     const token = this.readTokenNow()
-    if (token === undefined) throw new Error('MinerU token 没配——先在设置里填，或 settings.set { section: "mineru", key: "token", value: "…" }')
+    if (token === undefined) throw new Error('MinerU token 没配——先在本地设置界面填，或用 credentials.copy / credentials.import 配置 mineru.token；用 credentials.status 查看状态')
 
     // 占位必须在第一个 await 之前：两个并发 submit 不能都验到「这个 outDir 空着」
     const jobs = this.newQueuedJobs(files)

@@ -11,7 +11,7 @@ const STALL_CHECKED_CLOUD_STATES = new Set(['running', 'converting'])
 const REQUEST_TIMEOUT_MS = 60 * 1000
 const UPLOAD_TIMEOUT_MS = 600 * 1000
 
-const TOKEN_HINT = 'token 无效或过期：去 mineru.net 的 API 管理页换一个，再 settings.set { section: "mineru", key: "token", value: "…" }'
+const TOKEN_HINT = 'token 无效或过期：去 mineru.net 的 API 管理页换一个，再在本地设置界面更新，或用 credentials.copy / credentials.import 覆盖 mineru.token（overwrite: true）'
 
 const ACTIONABLE_HINT_BY_ERROR_CODE: Readonly<Record<string, string>> = {
   A0202: TOKEN_HINT,

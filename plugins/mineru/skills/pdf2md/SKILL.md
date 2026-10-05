@@ -34,8 +34,8 @@ description: 要把一个或一批 PDF 原样转成 markdown 时读。submit 收
 
 ## 出了问题
 
-- **token 没配，提交当场拒**：报「MinerU token 没配」，去配：`settings.set { "section": "mineru", "key": "token", "value": "…" }`（状态回执与日志里看不到它的值）
-- **token 失效，作业几秒内 failed**：`error` 里有 `code=A0211` 与换 token 的那句话。去 mineru.net 的 API 管理页换一个、`settings.set` 填上、重新提交
+- **token 没配，提交当场拒**：报「MinerU token 没配」。读说明书 `gwb-settings`，在用户授权范围内用 `credentials.copy` / `credentials.import` 配置目标 `{ "section": "mineru", "key": "token" }`，或在本地设置界面填写；用 `credentials.status` 核对是否已配置。复制、导入只回状态，agent 可以执行，不必经手原文
+- **token 失效，作业几秒内 failed**：`error` 里有 `code=A0211` 与换 token 的那句话。去 mineru.net 的 API 管理页换一个，再经上述入口更新（复制、导入覆盖时明确 `overwrite: true`）、重新提交；随机生成的值不能代替 MinerU 签发的 token
 - **`interrupted`**：宿主重启或插件卸载打断了作业。账上有 `archive` 的用 `recover`；没有的把同一个 PDF 再提交一次
 - **解包失败先看 `recover`，不用重新提交**：结果 zip 一下载下来就在 outDir 旁边留了一份 `.<outDir 名>.pdf2md/archive-<作业号>.zip`。作业 `failed` 且账上有 `archive` 时，
   `pdf2md.recover { id }` 用它把解包重做一遍，不申请上传位、不上传、不轮询、不花云端额度。`done` 的、还在跑的、没走到下载的（账上没有 `archive`）会被拒；

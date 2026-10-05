@@ -64,9 +64,9 @@ agent 与页面调四条命令：`pdf2md.submit { files }`、`pdf2md.status { id
 
 没配时 `submit` 报「MinerU token 没配」：
 
-{/* ref file="../plugins/mineru/src/index.ts" lines="221-224" hash="cb433e5de77d" blob="c1ea4e1b5397" */}
+{/* ref file="../plugins/mineru/src/index.ts" lines="221-224" hash="0ffeb3e0f765" blob="995921077508" */}
 
-配置命令是 `settings.set { "section": "mineru", "key": "token", "value": "…" }`。状态回执与日志里永远看不到它的值。
+凭据可在本地设置界面填写，或经 `credentials.copy` / `credentials.import` 存入目标 `{ "section": "mineru", "key": "token" }`；覆盖已有值时明确 `overwrite: true`，跨 home 时明确来源。用 `credentials.status` 查是否已配置，完整参数读说明书 `gwb-settings`。这些操作只回状态，日志和回执不含原文；`credentials.generate` 的随机值不能代替 MinerU 签发的 token。
 `submit` 每次调用时读一次 token，改了值不用重新加载插件。
 
 token 配了但无效或过期，`submit` 拦不住（要问云端才知道），作业几秒内 `failed`，`error` 里带 `code=A0211` 与换 token 的那句话；

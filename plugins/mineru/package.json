@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-mineru",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "author": {
     "name": "godcreator"
   },
@@ -48,7 +48,7 @@
     "@godcreator/gwb-kernel-desktop": "^0.10.0",
     "@godcreator/gwb-commands": "^0.6.0",
     "@godcreator/gwb-data": "^0.1.9",
-    "@godcreator/gwb-settings": "^0.3.5",
+    "@godcreator/gwb-settings": "^0.4.0",
     "@godcreator/gwb-skills": "^0.4.7",
     "cordis": "^4.0.0-rc.10"
   },
