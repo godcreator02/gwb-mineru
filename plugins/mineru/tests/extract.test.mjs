@@ -1,18 +1,18 @@
 // 解包那一层的验收：围栏（每一条都得有名有姓地拒）+ staging 全量校验后才落盘 + 原子提交 + 归档可重解。
-// 跑：pnpm test（先 build 再 node --test tests/）。零网络：fetch 换成替身，zip 是手搓的。
+// 跑：pnpm test（先 build 再 vitest run）。零网络：fetch 换成替身，zip 是手搓的。
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { after, describe, it } from 'node:test'
 import { pathToFileURL } from 'node:url'
+import { afterAll, describe, it } from 'vitest'
 import { treeOf, zipOf } from './helpers.mjs'
 
 const MODULE = pathToFileURL(path.join(import.meta.dirname, '..', 'dist', 'core', 'extract.js')).href
 const { CommitRejectedError, EntryRejectedError, downloadExtract, extractArchive, isChineseDominant } = await import(MODULE)
 
 const ROOT = await mkdtemp(path.join(os.tmpdir(), 'gwb-mineru-extract-'))
-after(() => rm(ROOT, { recursive: true, force: true }))
+afterAll(() => rm(ROOT, { recursive: true, force: true }))
 
 const caseDir = async (name) => {
   const dir = path.join(ROOT, name)

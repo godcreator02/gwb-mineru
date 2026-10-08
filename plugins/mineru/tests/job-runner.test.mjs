@@ -1,20 +1,20 @@
 // 作业机那一层的验收：一个 outDir 一次只落一个作业、已有产物的显式策略、围栏在真链路上生效、
 // 以及落了 failed 之后凭盘上归档 recover（零云端、零额度）。云端是替身，PDF 是随手写的假文件。
-// 跑：pnpm test（先 build 再 node --test tests/）。
+// 跑：pnpm test（先 build 再 vitest run）。
 import assert from 'node:assert/strict'
 import { Context } from 'cordis'
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { after, describe, it } from 'node:test'
 import { pathToFileURL } from 'node:url'
+import { afterAll, describe, it } from 'vitest'
 import { fakeCloud, treeOf, zipOf } from './helpers.mjs'
 
 const MODULE = pathToFileURL(path.join(import.meta.dirname, '..', 'dist', 'index.js')).href
 const { default: GwbMineru } = await import(MODULE)
 
 const ROOT = await mkdtemp(path.join(os.tmpdir(), 'gwb-mineru-jobs-'))
-after(() => rm(ROOT, { recursive: true, force: true }))
+afterAll(() => rm(ROOT, { recursive: true, force: true }))
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const exists = async (target) => (await stat(target).catch(() => undefined)) !== undefined

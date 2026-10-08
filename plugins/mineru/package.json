@@ -34,7 +34,7 @@
   "scripts": {
     "build": "node build.ts && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "pnpm build && node --test \"tests/*.test.mjs\"",
+    "test": "pnpm build && vitest run",
     "check": "pnpm run typecheck && pnpm run test",
     "prepublishOnly": "pnpm build"
   },
@@ -63,7 +63,8 @@
     "adm-zip": "^0.5.18",
     "cordis": "4.0.0-rc.10",
     "esbuild": "^0.27.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   },
   "keywords": ["gwb", "gwb-plugin"]
 }
