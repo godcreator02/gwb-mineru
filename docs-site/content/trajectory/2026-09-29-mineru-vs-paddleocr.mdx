@@ -1,0 +1,28 @@
+---
+born-at: 2026-09-29T18:21
+type: evidence
+parent: [2026-09-08-gwb-mineru]
+label: MinerU 与 Paddle 对比
+domain: 引擎
+---
+
+## 背景
+
+论文库里的 PDF 都经本插件交给 MinerU 云端转 markdown。要判断换成 PaddleOCR-VL-1.6、或者两个引擎并用，能不能让正文、公式、表格转得更准，
+用论文库里已有的 10 篇论文（6 篇英文、4 篇中文，其中 3 篇是带文字层的整页栅格图）共 194 页，两边各跑一遍，逐页对照原图。
+
+## 结论与边界
+
+MinerU 继续当默认引擎，本插件不改。全批 MinerU 的 markdown 有 372 个公式编号 `\tag`，Paddle 只有 5 个：Paddle 的 JSON 里有 378 个公式编号块，
+是导出 markdown 时丢了，不是没识别出来。
+
+MinerU 的弱点在中文正文和英文行内公式：08 号论文第 1、4 页漏掉了「MMC」和图号「5」，01 号第 17 页的行内公式混进了 U+0003 / U+0004 控制字符。
+Paddle 在这几处是对的，但漏掉了 02 号第 13 页 Table III 的 Set E 整列四个数值，还会把原文的印刷错误改写通顺。
+所以 Paddle 适合当重点页的第二份对照；表格要用于设计参数时，两个引擎的输出都要按原页逐个数值核对。
+
+边界：没有逐字标注全部 194 页，也没有人工真值，不给准确率或总体胜率；两列耗时口径不同，不比较快慢；样本都有文字层，结论不能推广到手机拍照、倾斜或污损的扫描件。
+以后要把 Paddle 接进论文库，得从它的 JSON 取页码与公式编号，不能只拼 markdown。
+
+## 依据
+
+`probes/2609291821_mineru-vs-paddleocr/REPORT.md`、`metrics.json`、`validation.json`。原始产物与论文副本不进 git，在本机 `D:\unitfolders\xc738-paper-ocr-benchmark\`。
