@@ -1,5 +1,6 @@
 {
   "title": "未来",
+  "root": true,
   "description": "还没发生的事：路线图，与别的仓投来的反馈",
   "pages": [
     "roadmap",

@@ -16,5 +16,5 @@ pnpm build          # 插件包在 plugins/mineru/，esbuild 输出 js 并把 ad
 
 ## 文档
 
-文档站在 `docs-site/`：`cd docs-site; pnpm dev`，看 `http://localhost:4317`。首页有一张接缝图讲插件怎么分块、跟外面怎么连。
+文档站在 `docs-site/`（god-docsite + docfirst），由 gwb 工作台托管开发服务：`docsite.site.add {"dir":"<站目录>"}`，地址看 `docsite.site.list`。首页有一张接缝图讲插件怎么分块、跟外面怎么连。
 这份 README 是生成物，正本是 `docs-site/content/docs/outputs/readme.mdx`。

@@ -9,9 +9,11 @@ gwb-mineru 是 gwb 工作台的插件：提供服务 `gwbPdf2md` 与命令 `pdf2
 ```powershell
 pnpm install && pnpm check                     # 仓根：对 plugins/* 逐个 typecheck，再构建并跑单测
 pnpm build                                     # esbuild（build.ts）输出 js 并打包 adm-zip，tsc 只输出类型声明
-cd docs-site; pnpm build; pnpm start           # 文档站，http://localhost:4317；不用 pnpm dev，改了内容重新 build
 cd docs-site; pnpm doc                         # 钉码检查；doc:confirm 写回挪了位置的钉码，doc:render 重新生成生成物
+cd docs-site; pnpm build                       # 文档站（god-docsite + docfirst）的构建，只作提交前的检查
 ```
+
+看文档站页面由工作台托管开发服务：`docsite.site.add {"dir":"<站目录>"}`，地址以 `docsite.site.list` 回的 `url` 为准，不在会话里自己 `pnpm dev`。
 
 装进 home：`plugin-manager.install {"pkg":"@godcreator/gwb-mineru"}`；`devkit.dev` / `devkit.release` 的 `packages` 写 `["plugins/mineru"]`。
 凭据是设置节 `mineru` 的 `token`（secret，mineru.net 的 API 管理页创建），在隔离 home 里要调用真实的 MinerU 云端，就得配上真实的 token。

@@ -1,0 +1,35 @@
+---
+born-at: 2026-10-17T10:45
+type: choice
+parent: [2026-09-08-gwb-mineru]
+label: 文档站迁到 god-docsite
+domain: 文档站
+---
+
+## 背景
+
+docs-site 原来是 Next 16 + `@godcreator/docfirst-workflow` 0.5.2：页面路由、搜索、llms 文本、星轨盘都是站里手写的 Next 文件（`src/app/`），
+组件名册由 `src/components/registry.ts` 与 `scripts/verify-roster.mjs` 两边核对，看页面要先 `pnpm build` 再 `pnpm start`（端口 4317）。
+平台换成了 `@godcreator/god-docsite`（fumadocs + React Router + Vite）加功能包 code-pin、trajectory、explainer，命令行换成 `@godcreator/docfirst` 0.1.0，
+开发服务由工作台的 `docsite.site.*` 托管。这个站照 god-docsite 维护页「Next docfirst 站迁到平台」迁过去，先例是 gwb-vscode。
+
+## 结论与边界
+
+- 骨架用 `docfirst.create` 在 `D:\gwb-docfirst-migrate\gwb-mineru\docs-site` 生成，`app/` 与根配置、身份文件 `docsite.json`、`people.json`、`glossary.json`、`comments/`
+  整份换进 docs-site；`package.json` 依赖与脚本照骨架，名字、版本、描述保留
+- `content/` 正文不动；轨迹卡从 `content/trajectory/` 挪到站点根 `trajectory/`，原来给星轨盘入口排侧栏的 `meta.json` 删掉
+- 两个组件各挪进用它那一页的同名文件夹：接缝图 `SeamMap` 进 `content/docs/index/`，作业状态演示 `JobLifecycle` 进 `content/docs/job-runner/`，两页开头各自 import；
+  两个组件共用的颜色 `seam-colors.css` 只在现状区 `docs` 这一组里用，放进组里的 `content/docs/_shared/`，没有放站点 `app/components/`
+- 组件没有单独的数据文件，机读规则本来就写在 `docfirst.config.mjs` 里，照抄；配置改成 `fumadocsRoster: true`、`trajectory: 'trajectory'`、名册加 `Term`
+- AGENTS / README 正本里「build + start 看页面、端口 4317」「`pnpm dev`，端口 4317」改成由工作台托管开发服务；生成物只变了这两处，没有渲染器带来的写法变化
+- 迁完 `pnpm doc` 全绿，`pnpm typecheck`、`pnpm build` 通过，`docsite.site.start` 后首页、`/docs`、`/future/roadmap`、`/trajectory`、卡页、`/llms.txt` 都是 200，两个组件都画出来了
+
+边界：未来区没有 index 页，`/future` 本身是 404；顶上的下拉框点「未来」去的是区里第一页 `/future/roadmap`。
+
+## 否掉的候选
+
+在 Next 站上逐个文件改成 React Router：路由、页面 loader、功能包接线全都不同，从骨架换进来再核对差异更可靠。
+
+## 代价与遗留
+
+`glossary.mdx` 仍是一张手写表格页，术语没有转进 `glossary.json`，正文里也就没有术语标注；要不要转、转了表格页留不留，以后再定。

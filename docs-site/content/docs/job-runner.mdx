@@ -3,6 +3,8 @@ title: 作业机：gwbPdf2md 服务
 description: src/index.ts——一条作业怎么走过六个状态；submit 返回前做了什么；outDir 怎么占用；作业账怎么写；失败怎么记、recover 怎么补；启动对账与卸载打断
 ---
 
+import { JobLifecycle } from './job-runner/job-lifecycle'
+
 **本页回答**：`src/index.ts` 管什么、不管什么；一条作业怎么走过六个状态、每一步写进作业账什么；`submit` 返回前做了什么；
 outDir 的占用与覆盖怎么管；作业账怎么写；失败怎么记、`recover` 怎么补。它跟外面各插件的连接见[首页](/docs)的接缝 ①–⑧，
 注入与 peer 汇总在[插件之间怎么连](/docs/wiring)。
